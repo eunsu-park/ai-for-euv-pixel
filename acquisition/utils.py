@@ -1,16 +1,31 @@
 import os
 import datetime
 import tempfile
+from glob import glob
 import warnings
 import shutil
+from functools import partial
 from multiprocessing import Pool
 import requests
 import urllib3
 import drms
 import pickle
+import astropy.units as u
+import aiapy.psf
+from sunpy.map import Map
+from aiapy.calibrate import register, update_pointing, fix_observer_location
+from aiapy.calibrate import fetch_spikes, respike
+from aiapy.calibrate import correct_degradation
 from aiapy.calibrate.util import get_correction_table, get_pointing_table
 import aiapy.psf
 import astropy.units as u
+import ssl
+import numpy as np
+from astropy.time import Time
+urllib3.disable_warnings()
+from imageio import imsave
+ssl._create_default_https_context = ssl._create_unverified_context
+from astropy.io import fits
 
 
 def download_url(source, destination):
@@ -23,7 +38,7 @@ def download_url(source, destination):
         if not os.path.exists(os.path.dirname(destination)):
             os.makedirs(os.path.dirname(destination))
         # 스트리밍을 사용하여 파일 다운로드
-        with requests.get(source, stream=True) as response:
+        with requests.get(source, stream=True, verify=False) as response:
             response.raise_for_status()
             with open(temporary, 'wb') as file:
                 for chunk in response.iter_content(chunk_size=8192):
@@ -89,12 +104,25 @@ def save_correction_table(file_path):
         pickle.dump(correction_table, f)
 
 
+def load_correction_table(file_path):
+    if not os.path.exists(file_path):
+        save_correction_table(file_path)
+    with open(file_path, 'rb') as f :
+        return pickle.load(f)
+
 def save_pointing_table(file_path):
     start = datetime.datetime(2010, 1, 1)
     end = datetime.datetime.now()
     pointing_table = get_pointing_table(start, end)
     with open(file_path, 'wb') as f:
         pickle.dump(pointing_table, f)
+
+
+def load_pointing_table(file_path):
+    if not os.path.exists(file_path):
+        save_pointing_table(file_path)
+    with open(file_path, 'rb') as f :
+        return pickle.load(f)
 
 
 def save_psfs(file_path):
@@ -105,4 +133,177 @@ def save_psfs(file_path):
         psfs[str(int(wave))] = psf
     with open(file_path, 'wb') as f:
         pickle.dump(psfs, f)
+
+
+def load_psfs(file_path):
+    if not os.path.exists(file_path):
+        save_psfs(file_path)
+    with open(file_path, 'rb') as f :
+        return pickle.load(f)
+
+
+def preparation(file_path,
+    do_update_pointing=False, pointing_table=None,
+    do_fix_observer_location=False,
+    do_respike=False,
+    do_deconvolve=False, psfs=None,
+    do_correct_degradation=False, correction_table=None) :
+
+    ## Load AIA map
+    aia_map = Map(file_path)
+
+    ## Update pointing
+    if do_update_pointing :
+        if pointing_table is None :
+            aia_map = update_pointing(aia_map)
+        else :
+            aia_map = update_pointing(aia_map, pointing_table=pointing_table)
+
+    ## Fix observer location
+    if do_fix_observer_location :
+        aia_map = fix_observer_location(aia_map)
+
+    ## Respike
+    if do_respike :
+        positions, values = fetch_spikes(aia_map)
+        aia_map = respike(aia_map, spikes=(positions, values))
+
+    ## Deconvolve
+    if do_deconvolve :
+        wavelnth = aia_map.meta["wavelnth"]
+        if wavelnth in [94, 131, 171, 193, 211, 304, 335] :
+            if psfs is None :
+                psf = aiapy.psf.psf(aia_map.wavelength)
+            else :
+                psf = psfs[str(int(wavelnth))]
+            aia_map = aiapy.psf.deconvolve(aia_map, psf=psf)        
+
+    ## Register
+    aia_map = register(aia_map)
+
+    ## Correct degradation
+    if do_correct_degradation :
+        if wavelnth in [94, 131, 171, 193, 211, 304, 335] :
+            if correction_table is None :
+                aia_map = correct_degradation(aia_map)
+            else :
+                aia_map = correct_degradation(aia_map, correction_table=correction_table)
+
+    data = aia_map.data
+    meta = aia_map.meta
+
+    if data.shape != (4096, 4096) :
+        i_pad = (4096 - data.shape[0]) // 2
+        j_pad = (4096 - data.shape[1]) // 2
+        data = np.pad(data, ((i_pad, i_pad), (j_pad, j_pad)), mode="constant", constant_values=0)
+        aia_map = Map(data, meta)
+
+    return aia_map
+
+def get_preparation_func(do_update_pointing, pointing_table,
+    do_fix_observer_location,
+    do_respike,
+    do_deconvolve, psfs,
+    do_correct_degradation, correction_table) :
+
+    return partial(preparation,
+        do_update_pointing=do_update_pointing, pointing_table=pointing_table,
+        do_fix_observer_location=do_fix_observer_location,
+        do_respike=do_respike,
+        do_deconvolve=do_deconvolve, psfs=psfs,
+        do_correct_degradation=do_correct_degradation, correction_table=correction_table)
+
+
+def save_image(aia_map, save_path):
+    data = aia_map.data
+    data = np.clip(data, 0, None)
+    data = np.log2(data+1)
+    data = data * (255./14.)
+    image = np.clip(data, 0, 255).astype(np.uint8)
+    imsave(save_path, image)
+
+
+def select_only_one(dt_start, load_dir):
+
+    list_fits_final = []
+
+    waves = (94, 131, 171, 193, 211, 335)
+
+    for wave in waves :
+        list_fits = sorted(glob(f"{load_dir}/*{wave}.image_lev1.fits"))
+
+        seconds_list = []
+        quality_list = []
+        datetime_ref = dt_start
+        for file_path in list_fits :
+            hdu = fits.open(file_path)[-1]
+            header = hdu.header
+            quality = header["QUALITY"]
+            quality_list.append(quality)
+            t_rec = header["T_REC"]
+            datetime_fits = Time(t_rec).datetime
+            datetime_dif = datetime_ref-datetime_fits
+            seconds_dif = abs(datetime_dif.total_seconds())
+            seconds_list.append(seconds_dif)
+        min_value = min(seconds_list)
+        min_index = seconds_list.index(min_value)
+        file_path = list_fits[min_index]
+        print(file_path)
+        quality = quality_list[min_index]
+        if quality == 0 :
+            list_fits_final.append(file_path)
+
+    if len(list_fits_final) == len(waves):
+        return list_fits_final
+    else :
+        return 
+
+
+
+
+
+        # datetime_list.append(datetime.datetime(t_rec))
+
+
+
+    # file_path = list_fits[3]
+    # hdu = fits.open(file_path)[-1]
+    # header = hdu.header
+    # quality = header["QUALITY"]
+    # if quality == 0 :
+    #     return file_path
+    
+    # file_path = list_fits[4]
+    # hdu = fits.open(file_path)[-1]
+    # header = hdu.header
+    # quality = header["QUALITY"]
+    # if quality == 0 :
+    #     return file_path
+
+    # file_path = list_fits[2]
+    # hdu = fits.open(file_path)[-1]
+    # header = hdu.header
+    # quality = header["QUALITY"]
+    # if quality == 0 :
+    #     return file_path
+    # else :
+
+
+    # file_path = list_fits[5]
+    # hdu = fits.open(file_path)[-1]
+    # header = hdu.header
+    # quality = header["QUALITY"]
+    # if quality == 0 :
+    #     return file_path
+
+    # file_path = list_fits[1]
+    # hdu = fits.open(file_path)[-1]
+    # header = hdu.header
+    # quality = header["QUALITY"]
+    # if quality == 0 :
+    #     return file_path
+    # else :
+    #     file_path = list_fits[3]
+    #     return file_path
+
 

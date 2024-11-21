@@ -1,160 +1,64 @@
 import os
-import pickle
-import warnings
 import datetime
-from glob import glob
-from multiprocessing import Pool, freeze_support
-from functools import partial
-
-import ssl
-import matplotlib.pyplot as plt
-import numpy as np
-import astropy.units as u
-import aiapy.psf
-from sunpy.map import Map
-from aiapy.calibrate import register, update_pointing, fix_observer_location
-from aiapy.calibrate import fetch_spikes, respike
-from aiapy.calibrate import correct_degradation
-from aiapy.calibrate.util import get_correction_table, get_pointing_table
+import argparse
+from utils import load_correction_table, load_pointing_table, load_psfs
+from utils import get_preparation_func, save_image, select_only_one
 
 
-def save_psfs(file_path):
-    waves = [94, 131, 171, 193, 211, 304, 335]
-    psfs = {}
-    for wave in waves:
-        psf = aiapy.psf.psf(wave*u.angstrom)
-        psfs[str(int(wave))] = psf
-    with open(file_path, 'wb') as f:
-        pickle.dump(psfs, f)
 
+def main(args):
 
-def save_correction_table(file_path):
-    correction_table = get_correction_table()
-    with open(file_path, 'wb') as f:
-        pickle.dump(correction_table, f)
+    correction_table_file_path = f"{args.save_root}/correction_table.pkl"
+    correction_table = load_correction_table(correction_table_file_path)
 
+    pointing_table_file_path = f"{args.save_root}/pointing_table.pkl"
+    pointing_table = load_pointing_table(pointing_table_file_path)
 
-def save_pointing_table(file_path):
-    start = datetime.datetime(2010, 1, 1)
-    end = datetime.datetime.now()
-    pointing_table = get_pointing_table(start, end)
-    with open(file_path, 'wb') as f:
-        pickle.dump(pointing_table, f)
+    psfs_file_path = f"{args.save_root}/psfs.pkl"
+    psfs = load_psfs(psfs_file_path)
 
+    preparation_func = get_preparation_func(
+        do_update_pointing=True, pointing_table=pointing_table,
+        do_fix_observer_location=True,
+        do_respike=False,
+        do_deconvolve=True, psfs=psfs,
+        do_correct_degradation=True, correction_table=correction_table)
+   
+    load_dir = f"{args.load_root}/{args.year:04d}/{args.year:04d}{args.month:02d}{args.day:02d}{args.hour:02d}"
+    save_dir = f"{args.save_root}/{args.year:04d}/{args.year:04d}{args.month:02d}{args.day:02d}{args.hour:02d}"
 
-def aia_prep(file_path,
-    do_update_pointing=False, pointing_table=None,
-    do_fix_observer_location=False,
-    do_respike=False,
-    do_deconvolve=False, psfs=None,
-    do_correct_degradation=False, correction_table=None) :
+    dt_start = datetime.datetime(year=args.year, month=args.month,
+                                 day=args.day, hour=args.hour)
 
-    ## Load AIA map
-    aia_map = Map(file_path)
+    list_data = select_only_one(dt_start, load_dir)
 
-    ## Update pointing
-    if do_update_pointing :
-        if pointing_table is None :
-            aia_map = update_pointing(aia_map)
+    if list_data is not None :
+        preparation_flag = f"{save_dir}/done.preparation"
+        if not os.path.exists(preparation_flag):
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir, exist_ok=True)
+            for file_path in list_data :
+                file_name = os.path.basename(file_path)
+                save_path = f"{save_dir}/{file_name}"
+                if not os.path.exists(save_path) :
+                    result = preparation_func(file_path=file_path)
+                    result.save(save_path, overwrite=False)
+                    save_image(result, f"{save_path}.png")
+                else:
+                    pass
+            os.system(f"touch {preparation_flag}")
         else :
-            aia_map = update_pointing(aia_map, pointing_table=pointing_table)
-
-    ## Fix observer location
-    if do_fix_observer_location :
-        aia_map = fix_observer_location(aia_map)
-
-    ## Respike
-    if do_respike :
-        positions, values = fetch_spikes(aia_map)
-        aia_map = respike(aia_map, spikes=(positions, values))
-
-    ## Deconvolve
-    if do_deconvolve :
-        wavelnth = aia_map.meta["wavelnth"]
-        if wavelnth in [94, 131, 171, 193, 211, 304, 335] :
-            if psfs is None :
-                psf = aiapy.psf.psf(aia_map.wavelength)
-            else :
-                psf = psfs[str(int(wavelnth))]
-            aia_map = aiapy.psf.deconvolve(aia_map, psf=psf)        
-
-    ## Register
-    aia_map = register(aia_map)
-
-    ## Correct degradation
-    if do_correct_degradation :
-        if wavelnth in [94, 131, 171, 193, 211, 304, 335] :
-            if correction_table is None :
-                aia_map = correct_degradation(aia_map)
-            else :
-                aia_map = correct_degradation(aia_map, correction_table=correction_table)
-
-    return aia_map
-
-
-def get_aia_prep_func(do_update_pointing, pointing_table,
-    do_fix_observer_location,
-    do_respike,
-    do_deconvolve, psfs,
-    do_correct_degradation, correction_table) :
-
-    return partial(aia_prep,
-        do_update_pointing=do_update_pointing, pointing_table=pointing_table,
-        do_fix_observer_location=do_fix_observer_location,
-        do_respike=do_respike,
-        do_deconvolve=do_deconvolve, psfs=psfs,
-        do_correct_degradation=do_correct_degradation, correction_table=correction_table)
-
-
-def main(file_path, save_path,
-    do_update_pointing, pointing_table,
-    do_fix_observer_location,
-    do_respike,
-    do_deconvolve, psfs,
-    do_correct_degradation, correction_table) :
-
-    aia_map = aia_prep(file_path,
-        do_update_pointing=do_update_pointing, pointing_table=pointing_table,
-        do_fix_observer_location=do_fix_observer_location,
-        do_respike=do_respike,
-        do_deconvolve=do_deconvolve, psfs=psfs,
-        do_correct_degradation=do_correct_degradation, correction_table=correction_table)
-    
-    aia_map.save(save_path)
-    print(f"Saved {save_path}")
+            pass
 
 
 if __name__ == "__main__" :
-    import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--do_update_pointing", type=bool, default=True)
-    parser.add_argument("--pointing_table", type=str, default="/Users/eunsu/Workspace/aia_pixel_dl/pointing_table.pkl")
-    parser.add_argument("--do_fix_observer_location", type=bool, default=True)
-    parser.add_argument("--do_respike", type=bool, default=False)
-    parser.add_argument("--do_deconvolve", type=bool, default=True)
-    parser.add_argument("--psfs", type=str, default="/Users/eunsu/Workspace/aia_pixel_dl/psfs.pkl")
-    parser.add_argument("--do_correct_degradation", type=bool, default=True)
-    parser.add_argument("--correction_table", type=str, default="/Users/eunsu/Workspace/aia_pixel_dl/correction_table.pkl")
+    parser.add_argument("--load_root", type=str, help="Root directory of original files")
+    parser.add_argument("--save_root", type=str, help="Root directory of preped files")
+    parser.add_argument("--year", type=int)
+    parser.add_argument("--month", type=int)
+    parser.add_argument("--day", type=int)
+    parser.add_argument("--hour", type=int)
     args = parser.parse_args()
 
-    if args.pointing_table is not None :
-        with open(args.pointing_table, 'rb') as f :
-            pointing_table = pickle.load(f)
-    else :
-        pointing_table = None
-
-    if args.psfs is not None :
-        with open(args.psfs, 'rb') as f :
-            psfs = pickle.load(f)
-    else :
-        psfs = None
-
-    if args.correction_table is not None :
-        with open(args.correction_table, 'rb') as f :
-            correction_table = pickle.load(f)
-    else :
-        correction_table = None
-
-    from glob import glob
-    list_fits = glob()
-
+    main(args)

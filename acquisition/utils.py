@@ -1,11 +1,16 @@
 import os
 import datetime
 import tempfile
+import warnings
 import shutil
 from multiprocessing import Pool
 import requests
 import urllib3
-urllib3.disable_warnings()
+import drms
+import pickle
+from aiapy.calibrate.util import get_correction_table, get_pointing_table
+import aiapy.psf
+import astropy.units as u
 
 
 def download_url(source, destination):
@@ -35,6 +40,11 @@ def download_url(source, destination):
     except requests.RequestException as e:
         print(f"요청 중 오류가 발생했습니다: {e}")
         return False
+
+
+def get_client(email):
+    client = drms.Client(email=email)
+    return client
     
 
 def request(client, dt_start):
@@ -72,4 +82,27 @@ def download(export_request, out_dir):
         else:
             source_and_destination = not_downloaded
 
+
+def save_correction_table(file_path):
+    correction_table = get_correction_table()
+    with open(file_path, 'wb') as f:
+        pickle.dump(correction_table, f)
+
+
+def save_pointing_table(file_path):
+    start = datetime.datetime(2010, 1, 1)
+    end = datetime.datetime.now()
+    pointing_table = get_pointing_table(start, end)
+    with open(file_path, 'wb') as f:
+        pickle.dump(pointing_table, f)
+
+
+def save_psfs(file_path):
+    waves = [94, 131, 171, 193, 211, 304, 335]
+    psfs = {}
+    for wave in waves:
+        psf = aiapy.psf.psf(wave*u.angstrom)
+        psfs[str(int(wave))] = psf
+    with open(file_path, 'wb') as f:
+        pickle.dump(psfs, f)
 

@@ -8,13 +8,13 @@ from utils import get_preparation_func, save_image, select_only_one
 
 def main(args):
 
-    correction_table_file_path = f"{args.save_root}/correction_table.pkl"
+    correction_table_file_path = f"{args.load_root}/correction_table.pkl"
     correction_table = load_correction_table(correction_table_file_path)
 
-    pointing_table_file_path = f"{args.save_root}/pointing_table.pkl"
+    pointing_table_file_path = f"{args.load_root}/pointing_table.pkl"
     pointing_table = load_pointing_table(pointing_table_file_path)
 
-    psfs_file_path = f"{args.save_root}/psfs.pkl"
+    psfs_file_path = f"{args.load_root}/psfs.pkl"
     psfs = load_psfs(psfs_file_path)
 
     preparation_func = get_preparation_func(
@@ -42,11 +42,12 @@ def main(args):
                 save_path = f"{save_dir}/{file_name}"
                 if not os.path.exists(save_path) :
                     result = preparation_func(file_path=file_path)
-                    result.save(save_path, overwrite=False)
+                    result.save(save_path, overwrite=True)
                     save_image(result, f"{save_path}.png")
                 else:
                     pass
-            os.system(f"touch {preparation_flag}")
+            with open(preparation_flag, "w") as f:
+                f.write("done")
         else :
             pass
 

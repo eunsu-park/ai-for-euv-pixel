@@ -189,14 +189,13 @@ def preparation(file_path,
             else :
                 aia_map = correct_degradation(aia_map, correction_table=correction_table)
 
-    data = aia_map.data
-    meta = aia_map.meta
-
-    if data.shape != (4096, 4096) :
-        i_pad = (4096 - data.shape[0]) // 2
-        j_pad = (4096 - data.shape[1]) // 2
-        data = np.pad(data, ((i_pad, i_pad), (j_pad, j_pad)), mode="constant", constant_values=0)
-        aia_map = Map(data, meta)
+    # data = aia_map.data
+    # meta = aia_map.meta
+    # if data.shape != (4096, 4096) :
+    #     i_pad = (4096 - data.shape[0]) // 2
+    #     j_pad = (4096 - data.shape[1]) // 2
+    #     data = np.pad(data, ((i_pad, i_pad), (j_pad, j_pad)), mode="constant", constant_values=0)
+    #     aia_map = Map(data, meta)
 
     return aia_map
 
@@ -223,87 +222,38 @@ def save_image(aia_map, save_path):
     imsave(save_path, image)
 
 
-def select_only_one(dt_start, load_dir):
+def select_only_one(dt_start, data_root):
 
     list_fits_final = []
-
     waves = (94, 131, 171, 193, 211, 335)
 
+    year = dt_start.year
+    month = dt_start.month
+    day = dt_start.day
+    hour = dt_start.hour
+    minute = dt_start.minute
+    second = dt_start.second
+
     for wave in waves :
-        list_fits = sorted(glob(f"{load_dir}/*{wave}.image_lev1.fits"))
+        dir_path = os.path.join(data_root, f"{wave:d}", f"{year:04d}", f"{year:04d}{month:02d}{day:02d}")
+        file_pattern = f"aia.{year:04d}-{month:02d}-{day:02d}-{hour:02d}-*-*.{wave:d}.fits"
+        list_fits = sorted(glob(os.path.join(dir_path, file_pattern)))
+        nb_fits = len(list_fits)
+        if nb_fits > 0 :
+            file_path = list_fits[0]
+            file_name = os.path.basename(file_path)
+            _, date, _, _ = file_name.split(".")
+            f_year, f_month, f_day, f_hour, f_minute, f_second = date.split("-")
+            datetime_fits = datetime.datetime(int(f_year), int(f_month), int(f_day), int(f_hour), int(f_minute), int(f_second))
+            # hdu = fits.open(file_path)[-1]
+            # header = hdu.header
+            # t_rec = header["T_REC"]
+            # datetime_fits = Time(t_rec).datetime
+            datetime_dif = abs(datetime_fits - dt_start)
+            if datetime_dif.total_seconds() < 12 :
+                list_fits_final.append(file_path)
 
-        seconds_list = []
-        quality_list = []
-        datetime_ref = dt_start
-        for file_path in list_fits :
-            hdu = fits.open(file_path)[-1]
-            header = hdu.header
-            quality = header["QUALITY"]
-            quality_list.append(quality)
-            t_rec = header["T_REC"]
-            datetime_fits = Time(t_rec).datetime
-            datetime_dif = datetime_ref-datetime_fits
-            seconds_dif = abs(datetime_dif.total_seconds())
-            seconds_list.append(seconds_dif)
-        min_value = min(seconds_list)
-        min_index = seconds_list.index(min_value)
-        file_path = list_fits[min_index]
-        print(file_path)
-        quality = quality_list[min_index]
-        if quality == 0 :
-            list_fits_final.append(file_path)
-
-    if len(list_fits_final) == len(waves):
+    if len(list_fits_final) == len(waves) :
         return list_fits_final
     else :
-        return 
-
-
-
-
-
-        # datetime_list.append(datetime.datetime(t_rec))
-
-
-
-    # file_path = list_fits[3]
-    # hdu = fits.open(file_path)[-1]
-    # header = hdu.header
-    # quality = header["QUALITY"]
-    # if quality == 0 :
-    #     return file_path
-    
-    # file_path = list_fits[4]
-    # hdu = fits.open(file_path)[-1]
-    # header = hdu.header
-    # quality = header["QUALITY"]
-    # if quality == 0 :
-    #     return file_path
-
-    # file_path = list_fits[2]
-    # hdu = fits.open(file_path)[-1]
-    # header = hdu.header
-    # quality = header["QUALITY"]
-    # if quality == 0 :
-    #     return file_path
-    # else :
-
-
-    # file_path = list_fits[5]
-    # hdu = fits.open(file_path)[-1]
-    # header = hdu.header
-    # quality = header["QUALITY"]
-    # if quality == 0 :
-    #     return file_path
-
-    # file_path = list_fits[1]
-    # hdu = fits.open(file_path)[-1]
-    # header = hdu.header
-    # quality = header["QUALITY"]
-    # if quality == 0 :
-    #     return file_path
-    # else :
-    #     file_path = list_fits[3]
-    #     return file_path
-
-
+        return []

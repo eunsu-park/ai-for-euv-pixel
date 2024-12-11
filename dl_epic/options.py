@@ -10,19 +10,21 @@ class BaseOptions:
         # Environment
         self.parser.add_argument("--seed", type=int, default=2331,
                                  help="random seed")
-        self.parser.add_argument("--data_root", type=str, 
+        self.parser.add_argument("--data_root", type=str,
+                                 default="/storage/aisolo/aia_pixel_dl_resized",
                                  help="path to data")
         self.parser.add_argument("--save_root", type=str, 
+                                 default="/home/eunsu/Result/epic",
                                  help="path to save model and result")
-        self.parser.add_argument("--gpu_ids", type=str, default='0',
-                                 help='gpu ids, ex) 0  0,1,2  0,2. -1 for CPU')
+        self.parser.add_argument("--gpu_id", type=str, default='0',
+                                 help='gpu id, ex) 0, 2, 3, -1 for CPU')
 
         # Dataset
         self.parser.add_argument("--nb_channels", type=int, default=6,
                                  help="number of input channel")
         self.parser.add_argument("--nb_workers", type=int, default=4,
                                  help="# of process for dataloader")
-        self.parser.add_argument("--batch_size", type=int, default=5,
+        self.parser.add_argument("--batch_size", type=int, default=4,
                                  help="batch size")
 
         # Model
@@ -35,11 +37,10 @@ class BaseOptions:
         self.parser.add_argument("--init_gain", type=float, default=0.02,
                                  help="scaling factor for normal, xavier and orthogonal.")
 
-        # Loss, Metric
+        # # Loss, Metric
         self.parser.add_argument("--criterion", type=str, default="l1",
                                  help="loss function [l1 | l2 ]")
-        self.parser.add_argument("--metric", type=str, default="l2",
-                                 help="metric function [l1 | l2 ]")
+
         # Optimizer
         self.parser.add_argument("--lr", type=float, default=0.0002,
                                  help="initial learning rate for adam")
@@ -65,7 +66,7 @@ class TrainOptions(BaseOptions):
                                  help="# of epochs with initial learning rate")
         self.parser.add_argument("--nb_epochs_decay", type=int, default=500,
                                  help="# of epochs with linearly decaying learning rate")
-        self.parser.add_argument("--logging_freq", type=int, default=1000,
+        self.parser.add_argument("--logging_freq", type=int, default=10,
                                  help="logging frequency in iterations")
         self.parser.add_argument("--model_save_freq", type=int, default=100,
                                  help="model saving frequency in epochs")

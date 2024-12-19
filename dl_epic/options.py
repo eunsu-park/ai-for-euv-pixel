@@ -11,10 +11,10 @@ class BaseOptions:
         self.parser.add_argument("--seed", type=int, default=2331,
                                  help="random seed")
         self.parser.add_argument("--data_root", type=str,
-                                 default="/storage/aisolo/aia_pixel_dl_resized",
+                                 default="/home/eunsu/Dataset/epic",
                                  help="path to data")
         self.parser.add_argument("--save_root", type=str, 
-                                 default="/home/eunsu/Result/epic",
+                                 default="/home/eunsu/Results/epic",
                                  help="path to save model and result")
         self.parser.add_argument("--gpu_id", type=str, default='0',
                                  help='gpu id, ex) 0, 2, 3, -1 for CPU')
@@ -24,10 +24,12 @@ class BaseOptions:
                                  help="number of input channel")
         self.parser.add_argument("--nb_workers", type=int, default=4,
                                  help="# of process for dataloader")
-        self.parser.add_argument("--batch_size", type=int, default=4,
+        self.parser.add_argument("--batch_size", type=int, default=1,
                                  help="batch size")
 
         # Model
+        self.parser.add_argument("--mode", type=str, default="pixel",
+                                    help="model mode [pixel | patch]")
         self.parser.add_argument("--nb_layers", type=int, default=4,
                                     help="number of layers")
         self.parser.add_argument("--nb_features", type=int, default=64,
@@ -66,9 +68,9 @@ class TrainOptions(BaseOptions):
                                  help="# of epochs with initial learning rate")
         self.parser.add_argument("--nb_epochs_decay", type=int, default=500,
                                  help="# of epochs with linearly decaying learning rate")
-        self.parser.add_argument("--logging_freq", type=int, default=10,
+        self.parser.add_argument("--logging_freq", type=int, default=1000,
                                  help="logging frequency in iterations")
-        self.parser.add_argument("--model_save_freq", type=int, default=100,
+        self.parser.add_argument("--model_save_freq", type=int, default=10,
                                  help="model saving frequency in epochs")
 
 

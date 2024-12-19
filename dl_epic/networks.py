@@ -3,11 +3,12 @@ import torch.nn as nn
 
 
 class Encoder(nn.Module):
-    def __init__(self, nb_channels, nb_features, nb_layers):
+    def __init__(self, nb_channels, nb_features, nb_layers, mode):
         super(Encoder, self).__init__()
         self.nb_channels = nb_channels
         self.nb_features = nb_features
         self.nb_layers = nb_layers
+        self.mode = mode
         self.build()
 
     def build(self):
@@ -15,10 +16,19 @@ class Encoder(nn.Module):
         in_channels = self.nb_channels
         out_channels = 64
         for i in range(self.nb_layers - 1):
-            model += [nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0), nn.ReLU(inplace=True)]
+            if self.mode == "pixel":
+                model += [nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0), nn.ReLU(inplace=True)]
+            elif self.mode == "patch":
+                model += [nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1), nn.ReLU(inplace=True)]
+            # model += [nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0), nn.ReLU(inplace=True)]
             in_channels = out_channels
             out_channels = 2*out_channels
-        model += [nn.Conv2d(in_channels, self.nb_features, kernel_size=1, stride=1, padding=0), nn.ReLU(inplace=True)] # Sigmoid?
+        if self.mode == "pixel":
+            model += [nn.Conv2d(in_channels, self.nb_features, kernel_size=1, stride=1, padding=0), nn.ReLU(inplace=True)]
+        elif self.mode == "patch":
+            model += [nn.Conv2d(in_channels, self.nb_features, kernel_size=3, stride=1, padding=1), nn.ReLU(inplace=True)]
+        
+        #model += [nn.Conv2d(in_channels, self.nb_features, kernel_size=1, stride=1, padding=0), nn.ReLU(inplace=True)] # Sigmoid?
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
@@ -26,11 +36,12 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, nb_features, nb_channels, nb_layers):
+    def __init__(self, nb_features, nb_channels, nb_layers, mode):
         super(Decoder, self).__init__()
         self.nb_features = nb_features
         self.nb_channels = nb_channels
         self.nb_layers = nb_layers
+        self.mode = mode
         self.build()
 
     def build(self):
@@ -38,10 +49,18 @@ class Decoder(nn.Module):
         in_channels = self.nb_features
         out_channels = 64 * (2**(self.nb_layers - 2))
         for i in range(self.nb_layers - 1):
-            model += [nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0), nn.ReLU(inplace=True)]
+            if self.mode == "pixel":
+                model += [nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0), nn.ReLU(inplace=True)]
+            elif self.mode == "patch":
+                model += [nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1), nn.ReLU(inplace=True)]
+            # model += [nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0), nn.ReLU(inplace=True)]
             in_channels = out_channels
             out_channels = out_channels//2
-        model += [nn.Conv2d(in_channels, self.nb_channels, kernel_size=1, stride=1, padding=0)]
+        if self.mode == "pixel":
+            model += [nn.Conv2d(in_channels, self.nb_channels, kernel_size=1, stride=1, padding=0)]
+        elif self.mode == "patch":
+            model += [nn.Conv2d(in_channels, self.nb_channels, kernel_size=3, stride=1, padding=1)]
+        #model += [nn.Conv2d(in_channels, self.nb_channels, kernel_size=1, stride=1, padding=0)]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
@@ -49,10 +68,10 @@ class Decoder(nn.Module):
 
 
 class EncoderDecoer(nn.Module):
-    def __init__(self, nb_channels, nb_features, nb_layers):
+    def __init__(self, nb_channels, nb_features, nb_layers, mode="pixel"):
         super(EncoderDecoer, self).__init__()
-        self.encoder = Encoder(nb_channels, nb_features, nb_layers)
-        self.decoder = Decoder(nb_features, nb_channels, nb_layers)
+        self.encoder = Encoder(nb_channels, nb_features, nb_layers, mode)
+        self.decoder = Decoder(nb_features, nb_channels, nb_layers, mode)
 
     def forward(self, x):
         feat = self.encoder(x)
@@ -62,7 +81,7 @@ class EncoderDecoer(nn.Module):
 
 def define_network(options):
     network = EncoderDecoer(
-        options.nb_channels, options.nb_features, options.nb_layers)
+        options.nb_channels, options.nb_features, options.nb_layers, options.mode)
     return network
 
 

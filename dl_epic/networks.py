@@ -24,11 +24,10 @@ class Encoder(nn.Module):
             in_channels = out_channels
             out_channels = 2*out_channels
         if self.mode == "pixel":
-            model += [nn.Conv2d(in_channels, self.nb_features, kernel_size=1, stride=1, padding=0), nn.ReLU(inplace=True)]
+            model += [nn.Conv2d(in_channels, self.nb_features, kernel_size=1, stride=1, padding=0), nn.Tanh()]
         elif self.mode == "patch":
-            model += [nn.Conv2d(in_channels, self.nb_features, kernel_size=3, stride=1, padding=1), nn.ReLU(inplace=True)]
+            model += [nn.Conv2d(in_channels, self.nb_features, kernel_size=3, stride=1, padding=1), nn.Tanh()]
         
-        #model += [nn.Conv2d(in_channels, self.nb_features, kernel_size=1, stride=1, padding=0), nn.ReLU(inplace=True)] # Sigmoid?
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
@@ -60,7 +59,6 @@ class Decoder(nn.Module):
             model += [nn.Conv2d(in_channels, self.nb_channels, kernel_size=1, stride=1, padding=0)]
         elif self.mode == "patch":
             model += [nn.Conv2d(in_channels, self.nb_channels, kernel_size=3, stride=1, padding=1)]
-        #model += [nn.Conv2d(in_channels, self.nb_channels, kernel_size=1, stride=1, padding=0)]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):

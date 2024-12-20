@@ -14,7 +14,7 @@ class BaseOptions:
                                  default="/home/eunsu/Dataset/epic",
                                  help="path to data")
         self.parser.add_argument("--save_root", type=str, 
-                                 default="/home/eunsu/Results/epic",
+                                 default="/storage/aisolo/epic",
                                  help="path to save model and result")
         self.parser.add_argument("--gpu_id", type=str, default='0',
                                  help='gpu id, ex) 0, 2, 3, -1 for CPU')

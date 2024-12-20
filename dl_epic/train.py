@@ -1,10 +1,9 @@
+import os
 import time
-
 import torch
-
 from options import TrainOptions
 from utils import fix_seed
-from pipeline import define_dataset
+from pipeline import define_dataset, plot_snapshot, plot_features, save_snapshot
 from networks import define_network, define_criterion, define_optimizer, define_scheduler
 
 
@@ -42,6 +41,12 @@ if __name__ == "__main__" :
     scheduler = define_scheduler(options, optimizer)
     print(scheduler)
 
+    model_dir = os.path.join(options.save_root, options.mode, "model")
+    os.makedirs(model_dir, exist_ok=True)
+
+    snapshot_dir = os.path.join(options.save_root, options.mode, "snapshot")
+    os.makedirs(snapshot_dir, exist_ok=True)
+
     iterations = 0
     epochs = 0
     losses = []
@@ -64,11 +69,33 @@ if __name__ == "__main__" :
             if iterations % options.logging_freq == 0:
                 t1 = time.time()
                 print("Epochs: %d/%d, Iterations: %d, Loss: %.4f, Time: %.4f" % (epochs, epoch_max, iterations, loss.item(), t1 - t0))
+
+                inp = data.clone().to(device)
+
+                network.eval()
+                with torch.no_grad():
+                    out = network(inp)
+                    features = network.encoder(inp)
+                network.train()
+
+
+                inp = inp.cpu().detach().numpy()
+                out = out.cpu().detach().numpy()
+                features = features.cpu().detach().numpy()
+
+                snapshot_path = os.path.join(snapshot_dir, f"{iterations:08d}")
+                save_snapshot(inp, out, features, f"{snapshot_path}.npz")
+                plot_snapshot(inp, out, f"{snapshot_path}_recon.png")
+                plot_features(features, f"{snapshot_path}_features.png")
+
+                losses = []
                 t0 = t1
 
         scheduler.step()
         epochs += 1
 
-        break
-
+        if epochs % options.model_save_freq == 0 :
+            model_path = os.path.join(model_dir, f"{epochs:08d}.pth")
+            torch.save(network.state_dict(), model_path)
+            print(f"Save model: {model_path}")
 

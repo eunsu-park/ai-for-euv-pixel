@@ -4,9 +4,7 @@ import argparse
 class BaseOptions:
     def __init__(self):
         self.parser = argparse.ArgumentParser()
-        self.initialized = False
 
-    def initialize(self):
         self.parser.add_argument(
             "--seed", type=int, default=0,help="Random seed")
         
@@ -29,23 +27,23 @@ class BaseOptions:
         self.parser.add_argument(
             "--nb_node", type=int, default=16384, help="Number of nodes in hidden layers")
 
-        
-
-        
-        
-
-
-        self.initialized = True
-        
     def parse(self):
-        if not self.initialized:
-            self.initialize()
         return self.parser.parse_args()
 
 
 class TrainOptions(BaseOptions):
     def __init__(self):
         super(TrainOptions, self).__init__()
+
+        self.parser.add_argument(
+            "--is_train", type=bool, default=True)
+
+        self.parser.add_argument("--batch_size", type=int, default=1,
+            help="batch size")
+        
+        self.parser.add_argument("--num_workers", type=int, default=8,
+            help="# of process for dataloader")
+
 
 
 class TestOptions(BaseOptions):

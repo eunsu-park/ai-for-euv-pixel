@@ -4,11 +4,25 @@ import asdf
 import torch
 
 
+
+
+def 
+
+
 def load_asdf(file_path):
     af = asdf.open(file_path)
     tree = af.tree
     data = tree['data']
     return data
+
+
+class Dataset:
+    def __init__(self, options):
+        file_path = options.data_file_path
+
+
+
+
 
 
 class BaseDataset(torch.utils.data.Dataset):

@@ -18,7 +18,17 @@ def load_asdf(file_path):
 
 class Dataset:
     def __init__(self, options):
-        file_path = options.data_file_path
+        self.file_path = options.file_path
+        self.load_data()
+
+    def load_data(self):
+        af = asdf.open(self.file_path)
+        tree = af.tree
+        self.data = tree['data']
+        self.response_function = tree['response_function']
+
+    
+
 
 
 

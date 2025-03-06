@@ -24,16 +24,16 @@ def init_weights(net, init_type="normal", init_gain=0.02):
     net.apply(init_func)
 
 
-class Encoder(nn.Module):
-    def __init__(self, num_euv_channels, num_latent_features, model_type="pixel"):
-        super(Encoder, self).__init__()
+class Calculator(nn.Module):
+    def __init__(self, num_euv_channels, num_temperature_bins, model_type):
+        super(Calculator, self).__init__()
         self.num_euv_channels = num_euv_channels
-        self.num_latent_features = num_latent_features
+        self.num_temperature_bins = num_temperature_bins
         self.model_type = model_type
         self.build()
         print(self)
-        print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
-
+        print("The number of parameters:", sum(p.numel() for p in self.parameters() if p.requires_grad))
+    
     def build(self):
         if self.model_type == "pixel":
             kernel_size, stride, padding = 1, 1, 0
@@ -41,62 +41,62 @@ class Encoder(nn.Module):
             kernel_size, stride, padding = 3, 1, 1
         model = []
         model += [nn.Conv2d(self.num_euv_channels, 1024, kernel_size, stride, padding), nn.SiLU()]
-        model += [nn.Conv2d(1024, self.num_latent_features, kernel_size, stride, padding), nn.Sigmoid()]
+        model += [nn.Conv2d(1024, self.num_temperature_bins, kernel_size, stride, padding)]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
         return self.model(x)
 
 
-class Decoder(nn.Module):
-    def __init__(self, num_euv_channels, num_latent_features, model_type="pixel"):
-        super(Decoder, self).__init__()
-        self.num_euv_channels = num_euv_channels
-        self.num_latent_features = num_latent_features
-        self.model_type = model_type
-        self.build()
-        print(self)
-        print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
+class Reconstructor(nn.Module):
+    # def __init__(self, response_function, delta_temperature):
+    #     super(Reconstructor, self).__init__()
+    #     self.register_buffer("response_function", response_function)
+    #     self.register_buffer("delta_temperature", delta_temperature)
 
-    def build(self):
-        if self.model_type == "pixel":
-            kernel_size, stride, padding = 1, 1, 0
-        elif self.model_type == "convolution":
-            kernel_size, stride, padding = 3, 1, 1
-        model = []
-        model += [nn.Conv2d(self.num_latent_features, 1024, kernel_size, stride, padding), nn.SiLU()]
-        model += [nn.Conv2d(1024, self.num_euv_channels, kernel_size, stride, padding)]
-        self.model = nn.Sequential(*model)
+    def __init__(self, factor):
+        super(Reconstructor, self).__init__()
+        self.register_buffer("factor", torch.tensor(factor, dtype=torch.float64))
 
     def forward(self, x):
-        return self.model(x)
-
+        print(x.size())
+        x.view(x.size(0), x.size(3), x.size(1), x.size(2)) 
+        print(x.size())
+        x = torch.mm(x, self.factor)
+        print(x.size())
+        return x
 
 def define_networks(options):
     num_euv_channels = options.num_euv_channels
-    num_latent_features = options.num_latent_features
+    num_temperature_bins = options.num_temperature_bins
     model_type = options.model_type
     device = options.device
-    encoder = Encoder(num_euv_channels, num_latent_features, model_type).to(device)
-    decoder = Decoder(num_euv_channels, num_latent_features, model_type).to(device)
-    return encoder, decoder
+    calculator = Calculator(num_euv_channels, num_temperature_bins, model_type).to(device)
+    import numpy as np
+    response_file_path = options.response_file_path
+    npz = np.load(response_file_path)
+    factor = npz["factor_all_interpol"]
+    reconstructor = Reconstructor(factor)
+    return calculator, reconstructor
+
 
 if __name__ == "__main__" :
+
+    torch.set_default_dtype(torch.float64)
 
     from options import TrainOptions
     options = TrainOptions().parse()
 
-    E, D = define_networks(options)
+    C, R = define_networks(options)
 
     inp = torch.randn(options.batch_size,
                       options.num_euv_channels,
                       256, 256).to(options.device)
-    
-    init_weights(E, options.init_type)
-    init_weights(D, options.init_type)
+    out = C(inp)
+    print(out.size())
 
-    print(inp.size())
-    out = E(inp)
-    print(out.size())
-    out = D(out)
-    print(out.size())
+    print(inp.dtype)
+    print(C.model[0].weight.dtype)
+
+    rec = R(out)
+    print(rec.size())

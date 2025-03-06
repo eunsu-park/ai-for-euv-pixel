@@ -11,7 +11,7 @@ class BaseOptions:
         self.parser.add_argument("--data_file_path", type=str,
                                  help="Path to data file")
         self.parser.add_argument("--response_file_path", type=str,
-                                 default="./data/undine_params.npz", help="Path to response file")
+                                 default="./data/undine_params.h5", help="Path to response file")
         self.parser.add_argument("--save_root", type=str,
                                  default="/home/eunsu/Results/epic", help="save directory")
         self.parser.add_argument("--batch_size", type=int,

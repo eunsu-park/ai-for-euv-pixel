@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import h5py
 
 
 def init_weights(net, init_type="normal", init_gain=0.02):
@@ -56,14 +57,12 @@ class Reconstructor(nn.Module):
 
     def __init__(self, factor):
         super(Reconstructor, self).__init__()
-        self.register_buffer("factor", torch.tensor(factor, dtype=torch.float64))
+        self.register_buffer("factor", factor)
 
     def forward(self, x):
-        print(x.size())
-        x.view(x.size(0), x.size(3), x.size(1), x.size(2)) 
-        print(x.size())
-        x = torch.mm(x, self.factor)
-        print(x.size())
+        x = x.view(x.size(0), x.size(2), x.size(3), x.size(1)) 
+        x = torch.matmul(x, self.factor)
+        x = x.view(x.size(0), x.size(3), x.size(1), x.size(2))
         return x
 
 def define_networks(options):
@@ -71,12 +70,12 @@ def define_networks(options):
     num_temperature_bins = options.num_temperature_bins
     model_type = options.model_type
     device = options.device
-    calculator = Calculator(num_euv_channels, num_temperature_bins, model_type).to(device)
-    import numpy as np
+    calculator = Calculator(num_euv_channels, num_temperature_bins, model_type).double().to(device)
     response_file_path = options.response_file_path
-    npz = np.load(response_file_path)
-    factor = npz["factor_all_interpol"]
-    reconstructor = Reconstructor(factor)
+    with h5py.File(response_file_path, "r") as h5:
+        factor = h5["factor_all_interpol"][:]
+    factor = torch.tensor(factor).double()
+    reconstructor = Reconstructor(factor).double().to(device)
     return calculator, reconstructor
 
 
@@ -97,6 +96,9 @@ if __name__ == "__main__" :
 
     print(inp.dtype)
     print(C.model[0].weight.dtype)
+
+    factor = R.factor
+    print(f"factor size : {factor.size()}, factor dtype : {factor.dtype}, factor device : {factor.device}")
 
     rec = R(out)
     print(rec.size())

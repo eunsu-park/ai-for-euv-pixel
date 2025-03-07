@@ -7,19 +7,21 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 
-from networks import define_networks
-from pipeline import define_dataset
+from networks import Encoder, Decoder
+from pipeline import TrainDataset, TestDataset
 
 
 class EPIC:
     def __init__(self, options):
         self.options = options
-
         self.device = options.device
-        self.E, self.D = define_networks(options)
 
-        self.E.to(self.device)
-        self.D.to(self.device)
+        self.E = Encoder(num_euv_channels=options.num_euv_channels,
+                         num_latent_features=options.num_latent_features,
+                         model_type=options.model_type).to(self.device)
+        self.D = Decoder(num_euv_channels=options.num_euv_channels,
+                         num_latent_features=options.num_latent_features,
+                         model_type=options.model_type).to(self.device)
         self.init_weights(self.E, init_type=options.init_type)
         self.init_weights(self.D, init_type=options.init_type)
 
@@ -28,17 +30,31 @@ class EPIC:
                                     lr=options.lr, betas=(options.beta1, options.beta2))
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=options.n_epochs // 4, gamma=0.5)
 
-        self.dataloader = define_dataset(options)
+        if options.phase == "train" :
+            self.dataset = TrainDataset(data_root=options.data_root)
+            self.dataloader = torch.utils.data.DataLoader(self.dataset,
+                                                          batch_size=options.batch_size,
+                                                          shuffle=True,
+                                                          num_workers=options.num_workers)
+        elif options.phase == "test" :
+            self.dataset = TestDataset(data_root=options.data_root)
+            self.dataloader = torch.utils.data.DataLoader(self.dataset,
+                                                          batch_size=options.batch_size,
+                                                          shuffle=False,
+                                                          num_workers=options.num_workers)
 
         self.experiment_dir = f"{options.save_root}/{options.experiment_name}"
         self.snapshot_dir = f"{self.experiment_dir}/snapshot"
         self.model_dir = f"{self.experiment_dir}/model"
+        self.test_dir = f"{self.experiment_dir}/test"
         if not os.path.exists(self.snapshot_dir) :
             os.makedirs(self.snapshot_dir)
         if not os.path.exists(self.model_dir) :
             os.makedirs(self.model_dir)
-        # if options.is_train is True :
-        #     options.save_options(f"{self.experiment_dir}/options.txt")
+        if not os.path.exists(self.test_dir) :
+            os.makedirs(self.test_dir)
+        if options.is_train is True :
+            options.save_options(f"{self.experiment_dir}/options.txt")
 
     def init_weights(self, net, init_type='normal', init_gain=0.02):
         def init_func(m):
@@ -70,6 +86,8 @@ class EPIC:
                     param.requires_grad = requires_grad
 
     def train_step(self, data):
+        self.E.train()
+        self.D.train()
         self.optimizer.zero_grad()
         data = data.to(self.device)
         z = self.E(data)
@@ -78,6 +96,27 @@ class EPIC:
         loss.backward()
         self.optimizer.step()
         return loss.item()
+    
+    def test(self):
+        self.E.eval()
+        self.D.eval()
+        with torch.no_grad():
+            for i, data_dict in enumerate(self.dataloader):
+                data = data_dict["data"].to(self.device)
+                file_path = data_dict["file_path"]
+                file_name = os.path.basename(file_path[0])
+                z = self.E(data)
+                recon = self.D(z)
+                loss = self.criterion(recon, data)
+                data = data.cpu().detach().numpy()[0]
+                z = z.cpu().detach().numpy()[0]
+                recon = recon.cpu().detach().numpy()[0]
+                save_path = f"{self.test_dir}/{file_name}.h5"
+                with h5py.File(save_path, "w") as f:
+                    f.create_dataset("data", data=data)
+                    f.create_dataset("z", data=z)
+                    f.create_dataset("recon", data=recon)
+                print(f"Test [{i}/{len(self.dataloader)}] Loss: {loss:.4f}")
 
     def save_networks(self, epoch):
         save_path = os.path.join(self.model_dir, f"{epoch}.pth")
@@ -95,9 +134,8 @@ class EPIC:
         checkpoint = torch.load(load_path)
         self.E.load_state_dict(checkpoint["encoder"])
         self.D.load_state_dict(checkpoint["decoder"])
-        if self.options.is_train is True :
-            self.optimizer.load_state_dict(checkpoint["optimizer"])
-            self.scheduler.load_state_dict(checkpoint["scheduler"])
+        self.optimizer.load_state_dict(checkpoint["optimizer"])
+        self.scheduler.load_state_dict(checkpoint["scheduler"])
         print(f"Load model: {load_path}")
         return checkpoint.get("epoch", 0)
 
@@ -108,8 +146,6 @@ class EPIC:
             data = data.to(self.device)
             z = self.E(data)
             recon = self.D(z)
-        self.E.train()
-        self.D.train()
 
         data = data.cpu().detach().numpy()[0]
         z = z.cpu().detach().numpy()[0]

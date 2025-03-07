@@ -22,6 +22,7 @@ def set_seed(seed):
 
 def train():
     options = TrainOptions().parse()
+    options.phase = "train"
 
     set_seed(options.seed)
 

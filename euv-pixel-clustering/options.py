@@ -1,13 +1,18 @@
 import argparse
 
 
-class BaseOptions:
+class Options:
     def __init__(self) :
         self.parser = argparse.ArgumentParser()
+
+        # Options for all phases
         self.parser.add_argument("--seed", type=int,
                                  default=250104, help="random seed")
         self.parser.add_argument("--device", type=str,
                                  default="cuda", help="device")
+        self.parser.add_argument("--phase", type=str,
+                                 choices=["train", "test", "clustering"],
+                                 help="phase")
         self.parser.add_argument("--data_root", type=str,
                                  help="data root directory")
         self.parser.add_argument("--save_root", type=str,
@@ -17,7 +22,7 @@ class BaseOptions:
         self.parser.add_argument("--num_workers", type=int,
                                  default=8, help="number of workers")
         self.parser.add_argument("--experiment_name", type=str,
-                                 required=True, help="experiment name")        
+                                 help="experiment name")        
         self.parser.add_argument("--model_type", type=str,
                                  choices=["pixel", "convolution"],
                                  default="pixel", help="model type")
@@ -29,22 +34,7 @@ class BaseOptions:
                                  choices=["normal", "xavier", "kaiming", "orthogonal"],
                                  default="normal", help="initialization type")
 
-    def parse(self):
-        return self.parser.parse_args()
-    
-    def save_options(self, save_path):
-        args = self.parse()
-        with open(save_path, "w") as f:
-            for k, v in vars(args).items() :
-                f.write(f"{k}: {v}\n")
-            f.write("\n")
-        
-
-class TrainOptions(BaseOptions):
-    def __init__(self):
-        super(TrainOptions, self).__init__()
-        self.parser.add_argument("--is_train", type=bool,
-                                 default=True, help="train or test")
+        # Options for training
         self.parser.add_argument("--model_path", type=str,
                                  default="", help="model path")
         self.parser.add_argument("--lr", type=float,
@@ -60,28 +50,12 @@ class TrainOptions(BaseOptions):
         self.parser.add_argument("--save_freq", type=int,
                                  default=1, help="save frequency in epochs")
 
-
-class TestOptions(BaseOptions):
-    def __init__(self):
-        super(TestOptions, self).__init__()
-        self.parser.add_argument("--is_train", type=bool,
-                                 default=False, help="train or test")
-        self.parser.add_argument("--model_path", type=str,
-                                 default="", help="model path")
-
-
-class ClusteringOptions(BaseOptions):
-    def __init__(self):
-        super(ClusteringOptions, self).__init__()
-        self.parser.add_argument("--n_clusters", type=int,
-                                 default=10, help="number of clusters")
-        self.parser.add_argument("--n_init", type=int,
-                                 default=10, help="number of initializations")
-        self.parser.add_argument("--max_iter", type=int,
-                                 default=300, help="maximum number of iterations")
-        self.parser.add_argument("--tol", type=float,
-                                 default=1e-4, help="tolerance")
-        self.parser.add_argument("--report_freq", type=int,
-                                 default=1000, help="report frequency in iterations")
-        self.parser.add_argument("--save_freq", type=int,
-                                 default=1, help="save frequency in epochs")
+    def parse(self):
+        return self.parser.parse_args()
+    
+    def save_options(self, save_path):
+        args = self.parse()
+        with open(save_path, "w") as f:
+            for k, v in vars(args).items() :
+                f.write(f"{k}: {v}\n")
+            f.write("\n")

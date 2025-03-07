@@ -18,6 +18,8 @@ class BaseOptions:
                                  default=4, help="batch size")
         self.parser.add_argument("--num_workers", type=int,
                                  default=8, help="number of workers")
+        self.parser.add_argument("--experiment_name", type=str,
+                                 required=True, help="experiment name")        
         self.parser.add_argument("--model_type", type=str,
                                  choices=["pixel", "convolution"],
                                  default="pixel", help="model type")
@@ -35,7 +37,14 @@ class BaseOptions:
 
     def parse(self):
         return self.parser.parse_args()
-    
+
+    # def save_options(self, save_path):
+    #     args = self.parse()
+    #     with open(save_path, "w") as f:
+    #         for k, v in vars(args).items() :
+    #             f.write(f"{k}: {v}\n")
+    #         f.write("\n")
+
 
 class TrainOptions(BaseOptions):
     def __init__(self):

@@ -34,30 +34,45 @@ class TrainDataset(torch.utils.data.Dataset):
         return self.num_data
 
     def __getitem__(self, idx):
-        data = self.read_h5(self.data_list[idx])
+        file_path = self.data_list[idx]
+        data = self.read_h5(file_path)
         data = self.to_tensor(data)
-        # return {"data": data}
-        return data
+        return {"data": data, "file_path": file_path}
 
 
-def define_dataset(options):
-    batch_size = options.batch_size
-    num_workers = options.num_workers
-    shuffle = options.is_train
-    dataset = TrainDataset(options.data_root)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
-                                             shuffle=shuffle, num_workers=num_workers)
-    return dataloader
+class TestDataset(torch.utils.data.Dataset):
+    def __init__(self, data_root):
+        self.data_pattern = f"{data_root}/test/*.h5"
+        self.data_list = glob(self.data_pattern)
+        self.num_data = len(self.data_list)
+        self.read_h5 = ReadH5()
+        self.to_tensor = ToTensor()
+
+    def __len__(self):
+        return self.num_data
+
+    def __getitem__(self, idx):
+        file_path = self.data_list[idx]
+        data = self.read_h5(file_path)
+        data = self.to_tensor(data)
+        return {"data": data, "file_path": file_path}
 
 
 if __name__ == "__main__" :
-    from options import TrainOptions
-    options = TrainOptions().parse()
+    from options import Options
+    options = Options().parse()
 
-    dataloader = define_dataset(options)
+    options.phase = "train"
+
+    dataset = TrainDataset(data_root=options.data_root)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=options.batch_size,
+                                             shuffle=True, num_workers=options.num_workers)
+
     print(len(dataloader), len(dataloader.dataset))
 
-    for i, data in enumerate(dataloader):
-        print(i, data.shape, data.dtype, data.min(), data.max(), data.device)
+    for i, data_dict in enumerate(dataloader):
+        data = data_dict["data"]
+        file_path = data_dict["file_path"]
+        print(i, data.shape, data.dtype, data.min(), data.max(), data.device, file_path)
         if i == 100:
             break

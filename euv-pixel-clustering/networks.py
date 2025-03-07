@@ -72,21 +72,17 @@ class Decoder(nn.Module):
         return self.model(x)
 
 
-def define_networks(options):
-    num_euv_channels = options.num_euv_channels
-    num_latent_features = options.num_latent_features
-    model_type = options.model_type
-    device = options.device
-    encoder = Encoder(num_euv_channels, num_latent_features, model_type).to(device)
-    decoder = Decoder(num_euv_channels, num_latent_features, model_type).to(device)
-    return encoder, decoder
-
 if __name__ == "__main__" :
 
-    from options import TrainOptions
-    options = TrainOptions().parse()
+    from options import Options
+    options = Options().parse()
 
-    E, D = define_networks(options)
+    E = Encoder(num_euv_channels=options.num_euv_channels,
+                num_latent_features=options.num_latent_features,
+                model_type=options.model_type).to(options.device)
+    D = Decoder(num_euv_channels=options.num_euv_channels,
+                num_latent_features=options.num_latent_features,
+                model_type=options.model_type).to(options.device)
 
     inp = torch.randn(options.batch_size,
                       options.num_euv_channels,

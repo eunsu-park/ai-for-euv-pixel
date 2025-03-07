@@ -14,6 +14,7 @@ from pipeline import define_dataset
 class EPIC:
     def __init__(self, options):
         self.options = options
+
         self.device = options.device
         self.E, self.D = define_networks(options)
 
@@ -28,6 +29,16 @@ class EPIC:
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=options.n_epochs // 4, gamma=0.5)
 
         self.dataloader = define_dataset(options)
+
+        self.experiment_dir = f"{options.save_root}/{options.experiment_name}"
+        self.snapshot_dir = f"{self.experiment_dir}/snapshot"
+        self.model_dir = f"{self.experiment_dir}/model"
+        if not os.path.exists(self.snap_dir) :
+            os.makedirs(self.snapshot_dir)
+        if not os.path.exists(self.model_dir) :
+            os.makedirs(self.model_dir)
+        if options.is_train is True :
+            options.save_options(f"{self.experiment_dir}/options.txt")
 
     def init_weights(self, net, init_type='normal', init_gain=0.02):
         def init_func(m):
@@ -59,21 +70,17 @@ class EPIC:
                     param.requires_grad = requires_grad
 
     def train_step(self, data):
-        self.E.train()
-        self.D.train()
         self.optimizer.zero_grad()
-
         data = data.to(self.device)
         z = self.E(data)
         recon = self.D(z)
         loss = self.criterion(recon, data)
         loss.backward()
         self.optimizer.step()
-
         return loss.item()
 
     def save_networks(self, epoch):
-        save_path = os.path.join(self.options.save_root, "model", f"{epoch}.pth")
+        save_path = os.path.join(self.model_dir, f"{epoch}.pth")
         torch.save({"encoder" : self.E.state_dict(),
                     "decoder" : self.D.state_dict(),
                     "optimizer" : self.optimizer.state_dict(),
@@ -84,7 +91,7 @@ class EPIC:
         print(f"Save model: {save_path}")
 
     def load_networks(self, epoch):
-        load_path = os.path.join(self.options.save_root, "model", f"{epoch}.pth")
+        load_path = os.path.join(self.model_dir, f"{epoch}.pth")
         checkpoint = torch.load(load_path)
         self.E.load_state_dict(checkpoint["encoder"])
         self.D.load_state_dict(checkpoint["decoder"])
@@ -95,14 +102,12 @@ class EPIC:
         return checkpoint.get("epoch", 0)
 
     def save_snapshot(self, data, iteration):
-        snap_dir = os.path.join(self.options.save_root, "snapshot")
         self.E.eval()
         self.D.eval()
         with torch.no_grad():
             data = data.to(self.device)
             z = self.E(data)
             recon = self.D(z)
-
         self.E.train()
         self.D.train()
 
@@ -119,10 +124,10 @@ class EPIC:
             ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
             ax[1, i].axis("off")
             ax[1, i].set_title(f"Reconstruction {i}")
-        plt.savefig(f"{snap_dir}/{iteration:07d}.png", dpi=300)
+        plt.savefig(f"{self.snapshot_dir}/{iteration:07d}.png", dpi=300)
         plt.close()
 
-        save_path = f"{snap_dir}/{iteration:07d}.h5"
+        save_path = f"{self.snapshot_dir}/{iteration:07d}.h5"
         with h5py.File(save_path, "w") as f:
             f.create_dataset("data", data=data)
             f.create_dataset("z", data=z)

@@ -23,14 +23,6 @@ def set_seed(seed):
 def train():
     options = TrainOptions().parse()
 
-    snap_dir = f"{options.save_root}/snapshot"
-    if not os.path.exists(snap_dir) :
-        os.makedirs(snap_dir)
-
-    model_dir = f"{options.save_root}/model"
-    if not os.path.exists(model_dir) :
-        os.makedirs(model_dir)
-
     set_seed(options.seed)
 
     model = EPIC(options)

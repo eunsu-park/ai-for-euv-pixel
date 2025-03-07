@@ -1,8 +1,6 @@
-from glob import glob
 import h5py
 import numpy as np
 import torch
-#from torch.utils.data import Dataset, DataLoader
 
 
 class ReadH5:
@@ -39,8 +37,8 @@ def define_dataset(options):
 
 
 if __name__ == "__main__" :
-    from options import TrainOptions
-    options = TrainOptions().parse()
+    from options import Options
+    options = Options().parse()
 
     data = define_dataset(options)
     print(data.shape, data.dtype, data.min(), data.max(), data.device)

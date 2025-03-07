@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 from networks import Encoder, Decoder
 from pipeline import TrainDataset, TestDataset
+from utils import save_options
 
 
 class EPIC:
@@ -44,7 +45,6 @@ class EPIC:
                                                           num_workers=options.num_workers)
 
         self.experiment_dir = f"{options.save_root}/{options.experiment_name}"
-        # options.save_options(f"{self.experiment_dir}/options.txt")
         self.snapshot_dir = f"{self.experiment_dir}/snapshot"
         self.model_dir = f"{self.experiment_dir}/model"
         self.test_dir = f"{self.experiment_dir}/test"
@@ -54,6 +54,7 @@ class EPIC:
             os.makedirs(self.model_dir)
         if not os.path.exists(self.test_dir) :
             os.makedirs(self.test_dir)
+        # save_options(options, f"{self.experiment_dir}/options.txt")
 
     def init_weights(self, net, init_type='normal', init_gain=0.02):
         def init_func(m):
@@ -145,19 +146,18 @@ class EPIC:
         return checkpoint.get("epoch", 0)
 
     def save_snapshot(self, data, epoch, iteration):
+        save_path = f"{self.snapshot_dir}/{epoch:04d}_{iteration:07d}"
         self.E.eval()
         self.D.eval()
         with torch.no_grad():
             data = data.to(self.device)
             z = self.E(data)
             recon = self.D(z)
-
         data = data.cpu().detach().numpy()[0]
         z = z.cpu().detach().numpy()[0]
         recon = recon.cpu().detach().numpy()[0]
 
         fig, ax = plt.subplots(2, self.options.num_euv_channels, figsize=(4*self.options.num_euv_channels, 8))
-
         for i in range(self.options.num_euv_channels):
             ax[0, i].imshow(data[i], cmap="gray", vmin=-1, vmax=1)
             ax[0, i].axis("off")
@@ -165,11 +165,10 @@ class EPIC:
             ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
             ax[1, i].axis("off")
             ax[1, i].set_title(f"Reconstruction {i}")
-        plt.savefig(f"{self.snapshot_dir}/{epoch:04d}_{iteration:07d}.png", dpi=300)
+        plt.savefig(f"{save_path}.png", dpi=300)
         plt.close()
 
-        save_path = f"{self.snapshot_dir}/{epoch:04d}_{iteration:07d}.h5"
-        with h5py.File(save_path, "w") as f:
+        with h5py.File(f"{save_path}.h5", "w") as f:
             f.create_dataset("data", data=data)
             f.create_dataset("z", data=z)
             f.create_dataset("recon", data=recon)

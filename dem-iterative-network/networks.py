@@ -3,28 +3,6 @@ import torch.nn as nn
 import h5py
 
 
-def init_weights(net, init_type="normal", init_gain=0.02):
-    def init_func(m):
-        classname = m.__class__.__name__
-        if hasattr(m, "weight") and (classname.find("Conv") != -1 or classname.find("Linear") != -1):
-            if init_type == "normal":
-                nn.init.normal_(m.weight.data, 0.0, init_gain)
-            elif init_type == "xavier":
-                nn.init.xavier_normal_(m.weight.data, gain=init_gain)
-            elif init_type == "kaiming":
-                nn.init.kaiming_normal_(m.weight.data, a=0, mode="fan_in")
-            elif init_type == "orthogonal":
-                nn.init.orthogonal_(m.weight.data, gain=init_gain)
-            else:
-                raise NotImplementedError(f"Initialization method [{init_type}] is not implemented")
-            if hasattr(m, "bias") and m.bias is not None:
-                nn.init.constant_(m.bias.data, 0.0)
-        elif classname.find("BatchNorm2d") != -1:
-            nn.init.normal_(m.weight.data, 1.0, init_gain)
-            nn.init.constant_(m.bias.data, 0.0)
-    net.apply(init_func)
-
-
 class Calculator(nn.Module):
     def __init__(self, num_euv_channels, num_temperature_bins, model_type):
         super(Calculator, self).__init__()
@@ -70,28 +48,22 @@ class Reconstructor(nn.Module):
         x = x / 7. - 1.
         return x
 
-def define_networks(options):
-    num_euv_channels = options.num_euv_channels
-    num_temperature_bins = options.num_temperature_bins
-    model_type = options.model_type
-    device = options.device
-    calculator = Calculator(num_euv_channels, num_temperature_bins, model_type).double().to(device)
-    response_file_path = options.response_file_path
-    with h5py.File(response_file_path, "r") as h5:
-        factor = h5["factor_all_interpol"][:]
-    factor = torch.tensor(factor).double()
-    reconstructor = Reconstructor(factor).double().to(device)
-    return calculator, reconstructor
-
 
 if __name__ == "__main__" :
 
     torch.set_default_dtype(torch.float64)
 
-    from options import TrainOptions
-    options = TrainOptions().parse()
+    from options import Options
+    options = Options().parse()
 
-    C, R = define_networks(options)
+    C = Calculator(options.num_euv_channels,
+                   options.num_temperature_bins,
+                   options.model_type).to(options.device).double()
+    response_file_path = options.response_file_path
+    with h5py.File(response_file_path, "r") as h5:
+        factor = h5["factor_all_interpol"][:]
+    factor = torch.tensor(factor).double()
+    R = Reconstructor(factor).to(options.device).double()
 
     inp = torch.randn(options.batch_size,
                       options.num_euv_channels,

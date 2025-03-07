@@ -1,18 +1,7 @@
-import random
 from glob import glob
 import h5py
 import numpy as np
 import torch
-#from torch.utils.data import Dataset, DataLoader
-
-
-class ReadH5:
-    def __init__(self, key: str="data"):
-        self.key = key
-    def __call__(self, file_path):
-        with h5py.File(file_path, "r") as f:
-            data = f[self.key][:]
-        return data
 
 
 class ToTensor:
@@ -27,7 +16,6 @@ class TrainDataset(torch.utils.data.Dataset):
         self.data_pattern = f"{data_root}/train/*.h5"
         self.data_list = glob(self.data_pattern)
         self.num_data = len(self.data_list)
-        self.read_h5 = ReadH5()
         self.to_tensor = ToTensor()
 
     def __len__(self):
@@ -35,7 +23,11 @@ class TrainDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         file_path = self.data_list[idx]
-        data = self.read_h5(file_path)
+        with h5py.File(file_path, "r") as f:
+            data = f["data"][:]
+        x = np.random.choice(data.shape[1] - 256)
+        y = np.random.choice(data.shape[2] - 256)
+        data = data[:, x:x+256, y:y+256]
         data = self.to_tensor(data)
         return {"data": data, "file_path": file_path}
 
@@ -45,7 +37,6 @@ class TestDataset(torch.utils.data.Dataset):
         self.data_pattern = f"{data_root}/test/*.h5"
         self.data_list = glob(self.data_pattern)
         self.num_data = len(self.data_list)
-        self.read_h5 = ReadH5()
         self.to_tensor = ToTensor()
 
     def __len__(self):
@@ -53,7 +44,8 @@ class TestDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         file_path = self.data_list[idx]
-        data = self.read_h5(file_path)
+        with h5py.File(file_path, "r") as f:
+            data = f["data"][:]
         data = self.to_tensor(data)
         return {"data": data, "file_path": file_path}
 

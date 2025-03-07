@@ -33,10 +33,10 @@ class Options:
         self.parser.add_argument("--init_type", type=str,
                                  choices=["normal", "xavier", "kaiming", "orthogonal"],
                                  default="normal", help="initialization type")
-
-        # Options for training
         self.parser.add_argument("--model_path", type=str,
                                  default="", help="model path")
+
+        # Options for training
         self.parser.add_argument("--lr", type=float,
                                  default=0.0002, help="learning rate")
         self.parser.add_argument("--beta1", type=float,
@@ -52,10 +52,3 @@ class Options:
 
     def parse(self):
         return self.parser.parse_args()
-    
-    # def save_options(self, save_path):
-    #     args = self.parse()
-    #     with open(save_path, "w") as f:
-    #         for k, v in vars(args).items() :
-    #             f.write(f"{k}: {v}\n")
-    #         f.write("\n")

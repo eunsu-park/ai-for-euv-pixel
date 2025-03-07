@@ -100,6 +100,7 @@ if __name__ == "__main__" :
     inp = torch.randn(options.batch_size,
                       options.num_euv_channels,
                       256, 256).to(options.device)
+    inp = torch.clip(inp, min=-1., max=1.)
     out = C(inp)
     print(out.size())
 

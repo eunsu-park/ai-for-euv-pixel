@@ -99,23 +99,29 @@ class EPIC:
     def test(self):
         self.E.eval()
         self.D.eval()
+        losses = []
         with torch.no_grad():
             for i, data_dict in enumerate(self.dataloader):
                 data = data_dict["data"].to(self.device)
                 file_path = data_dict["file_path"]
-                file_name = os.path.basename(file_path[0])
                 z = self.E(data)
                 recon = self.D(z)
                 loss = self.criterion(recon, data)
-                data = data.cpu().detach().numpy()[0]
-                z = z.cpu().detach().numpy()[0]
-                recon = recon.cpu().detach().numpy()[0]
-                save_path = f"{self.test_dir}/{file_name}.h5"
-                with h5py.File(save_path, "w") as f:
-                    f.create_dataset("data", data=data)
-                    f.create_dataset("z", data=z)
-                    f.create_dataset("recon", data=recon)
+
+                data = data.cpu().detach().numpy()
+                z = z.cpu().detach().numpy()
+                recon = recon.cpu().detach().numpy()
+
+                for i in range(len(file_path)) :
+                    file_name = os.path.basename(file_path[i])
+                    save_path = f"{self.test_dir}/{file_name}.h5"
+                    with h5py.File(save_path, "w") as f:
+                        f.create_dataset("data", data=data[i])
+                        f.create_dataset("z", data=z[i])
+                        f.create_dataset("recon", data=recon[i])
                 print(f"Test [{i}/{len(self.dataloader)}] Loss: {loss:.4f}")
+                losses.append(loss)
+        print(f"Average Loss: {np.mean(losses):.4f}")
 
     def save_networks(self, epoch):
         save_path = os.path.join(self.model_dir, f"{epoch}.pth")
@@ -128,14 +134,14 @@ class EPIC:
                     save_path)
         print(f"Save model: {save_path}")
 
-    def load_networks(self, epoch):
-        load_path = os.path.join(self.model_dir, f"{epoch}.pth")
-        checkpoint = torch.load(load_path)
+    def load_networks(self, model_path):
+        # load_path = os.path.join(self.model_dir, f"{epoch}.pth")
+        checkpoint = torch.load(model_path)
         self.E.load_state_dict(checkpoint["encoder"])
         self.D.load_state_dict(checkpoint["decoder"])
         self.optimizer.load_state_dict(checkpoint["optimizer"])
         self.scheduler.load_state_dict(checkpoint["scheduler"])
-        print(f"Load model: {load_path}")
+        print(f"Load model: {model_path}")
         return checkpoint.get("epoch", 0)
 
     def save_snapshot(self, data, epoch, iteration):

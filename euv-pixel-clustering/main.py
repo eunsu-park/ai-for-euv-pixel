@@ -101,7 +101,7 @@ class EPIC:
         print(f"Load model: {load_path}")
         return checkpoint.get("epoch", 0)
 
-    def save_snapshot(self, data, iteration):
+    def save_snapshot(self, data, epoch, iteration):
         self.E.eval()
         self.D.eval()
         with torch.no_grad():
@@ -124,10 +124,10 @@ class EPIC:
             ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
             ax[1, i].axis("off")
             ax[1, i].set_title(f"Reconstruction {i}")
-        plt.savefig(f"{self.snapshot_dir}/{iteration:07d}.png", dpi=300)
+        plt.savefig(f"{self.snapshot_dir}/{epoch:04d}_{iteration:07d}.png", dpi=300)
         plt.close()
 
-        save_path = f"{self.snapshot_dir}/{iteration:07d}.h5"
+        save_path = f"{self.snapshot_dir}/{epoch:04d}_{iteration:07d}.h5"
         with h5py.File(save_path, "w") as f:
             f.create_dataset("data", data=data)
             f.create_dataset("z", data=z)

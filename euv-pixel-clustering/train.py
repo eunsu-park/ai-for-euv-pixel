@@ -42,7 +42,7 @@ def train():
 
             if (i+1) % options.report_freq == 0 :
                 print(f"Epoch [{epoch}/{options.n_epochs}] Batch [{i+1}/{len(model.dataloader)}] Loss: {loss:.4f}")
-                model.save_snapshot(data, i+1)
+                model.save_snapshot(data, epoch, i+1)
 
         epoch += 1
         model.scheduler.step()

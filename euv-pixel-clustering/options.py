@@ -29,7 +29,24 @@ class BaseOptions:
 
     def parse(self):
         return self.parser.parse_args()
-    
+
+
+class ClusteringOptions(BaseOptions):
+    def __init__(self):
+        super(ClusteringOptions, self).__init__()
+        self.parser.add_argument("--n_clusters", type=int,
+                                 default=10, help="number of clusters")
+        self.parser.add_argument("--n_init", type=int,
+                                 default=10, help="number of initializations")
+        self.parser.add_argument("--max_iter", type=int,
+                                 default=300, help="maximum number of iterations")
+        self.parser.add_argument("--tol", type=float,
+                                 default=1e-4, help="tolerance")
+        self.parser.add_argument("--report_freq", type=int,
+                                 default=1000, help="report frequency in iterations")
+        self.parser.add_argument("--save_freq", type=int,
+                                 default=1, help="save frequency in epochs")
+
 
 class TrainOptions(BaseOptions):
     def __init__(self):

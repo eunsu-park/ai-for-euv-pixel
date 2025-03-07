@@ -50,10 +50,10 @@ class TrainOptions(BaseOptions):
                                  default=0.5, help="beta1 parameter of Adam optimizer")
         self.parser.add_argument("--beta2", type=float,
                                  default=0.999, help="beta2 parameter of Adam optimizer")
-        self.parser.add_argument("--n_epochs", type=int,
-                                 default=10, help="number of epochs")
+        self.parser.add_argument("--n_iterations", type=int,
+                                 default=1000, help="number of iterations")
         self.parser.add_argument("--report_freq", type=int,
-                                 default=1000, help="report frequency in iterations")
+                                 default=100, help="report frequency in iterations")
         self.parser.add_argument("--save_freq", type=int,
                                  default=1, help="save frequency in epochs")
 

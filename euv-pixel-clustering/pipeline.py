@@ -6,85 +6,58 @@ import torch
 #from torch.utils.data import Dataset, DataLoader
 
 
+class ReadH5:
+    def __init__(self, key: str="data"):
+        self.key = key
+    def __call__(self, file_path):
+        with h5py.File(file_path, "r") as f:
+            data = f[self.key][:]
+        return data
+
+
+class ToTensor:
+    def __init__(self, dtype: torch.dtype=torch.float32):
+        self.dtype = dtype
+    def __call__(self, data):
+        return torch.tensor(data, dtype=self.dtype)
 
 
 class TrainDataset(torch.utils.data.Dataset):
     def __init__(self, data_root):
-        self.data_pattern = f"{data_root}/triain/*.h5"
+        self.data_pattern = f"{data_root}/train/*.h5"
         self.data_list = glob(self.data_pattern)
         self.num_data = len(self.data_list)
+        self.read_h5 = ReadH5()
+        self.to_tensor = ToTensor()
 
     def __len__(self):
         return self.num_data
 
     def __getitem__(self, idx):
-        pass
+        data = self.read_h5(self.data_list[idx])
+        data = self.to_tensor(data)
+        # return {"data": data}
+        return data
 
 
+def define_dataset(options):
+    batch_size = options.batch_size
+    num_workers = options.num_workers
+    shuffle = options.is_train
+    dataset = TrainDataset(options.data_root)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
+                                             shuffle=shuffle, num_workers=num_workers)
+    return dataloader
 
 
-    # def __init__(self, data_root, spacecraft, instrument,
-    #              in_channels, in_size, out_channels, out_size):
+if __name__ == "__main__" :
+    from options import TrainOptions
+    options = TrainOptions().parse()
 
-    #     if spacecraft == "ahead" :
-    #         if instrument == "hi_1":
-    #             pattern_beacon = f"{data_root}/beacon/ahead/img/hi_1/*/*/*s7h1A.fts"
-    #             pattern_science = f"{data_root}/science/ahead/img/hi_1/*/*/*s4h1A.fts"
-    #         elif instrument == "hi_2":
-    #             pattern_beacon = f"{data_root}/beacon/ahead/img/hi_2/*/*/*s7h2A.fts"
-    #             pattern_science = f"{data_root}/science/ahead/img/hi_2/*/*/*s4h2A.fts"
-    #     elif spacecraft == "behind":
-    #         if instrument == "hi_1":
-    #             pattern_beacon = f"{data_root}/beacon/behind/img/hi_1/*/*/*s7h1B.fts"
-    #             pattern_science = f"{data_root}/science/behind/img/hi_1/*/*/*s4h1B.fts"
-    #         elif instrument == "hi_2":
-    #             pattern_beacon = f"{data_root}/beacon/behind/img/hi_2/*/*/*s7h2B.fts"
-    #             pattern_science = f"{data_root}/science/behind/img/hi_2/*/*/*s4h2B.fts"
+    dataloader = define_dataset(options)
+    print(len(dataloader), len(dataloader.dataset))
 
-    #     self.beacon_files = glob(pattern_beacon)
-    #     self.science_files = glob(pattern_science)
-
-    #     self.in_channels = in_channels
-    #     self.in_size = in_size
-    #     self.out_channels = out_channels
-    #     self.out_size = out_size
-
-    #     self.nb_beacon = len(self.beacon_files)
-    #     self.nb_science = len(self.science_files)
-    #     self.nb_data = min(self.nb_beacon, self.nb_science)
-
-    #     self.read_fits = ReadFits()
-    #     self.to_tensor = ToTensor()
-
-    # def __len__(self):
-    #     return self.nb_data
-    
-    # def __getitem__(self, idx):
-
-    #     ok_beacon = False
-    #     while not ok_beacon :
-    #         try :
-    #             beacon = self.read_fits(self.beacon_files[idx])
-    #             if beacon.shape != (self.in_channels, self.in_size, self.in_size) :
-    #                 idx = random.randint(0, self.nb_data-1)
-    #                 continue
-    #             ok_beacon = True
-    #         except :
-    #             idx = random.randint(0, self.nb_data-1)
-        
-    #     ok_science = False
-    #     while not ok_science :
-    #         try :
-    #             science = self.read_fits(self.science_files[idx])
-    #             if science.shape != (self.out_channels, self.out_size, self.out_size) :
-    #                 idx = random.randint(0, self.nb_data-1)
-    #                 continue
-    #             ok_science = True
-    #         except :
-    #             idx = random.randint(0, self.nb_data-1)
-
-    #     beacon = self.to_tensor(beacon)
-    #     science = self.to_tensor(science)
-
-    #     return {"beacon": beacon, "science": science}
-
+    for i, data in enumerate(dataloader):
+        print(i, data.shape, data.dtype, data.min(), data.max(), data.device)
+        if i == 100:
+            break

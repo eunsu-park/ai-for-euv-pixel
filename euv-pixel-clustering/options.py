@@ -9,9 +9,9 @@ class BaseOptions:
         self.parser.add_argument("--device", type=str,
                                  default="cuda", help="device")
         self.parser.add_argument("--data_root", type=str,
-                                 default="/home/eunsu/Dataset/pixel", help="data root directory")
+                                 help="data root directory")
         self.parser.add_argument("--save_root", type=str,
-                                 default="/home/eunsu/Results/epic", help="save directory")
+                                 help="save directory")
         self.parser.add_argument("--batch_size", type=int,
                                  default=4, help="batch size")
         self.parser.add_argument("--num_workers", type=int,
@@ -29,23 +29,6 @@ class BaseOptions:
 
     def parse(self):
         return self.parser.parse_args()
-
-
-class ClusteringOptions(BaseOptions):
-    def __init__(self):
-        super(ClusteringOptions, self).__init__()
-        self.parser.add_argument("--n_clusters", type=int,
-                                 default=10, help="number of clusters")
-        self.parser.add_argument("--n_init", type=int,
-                                 default=10, help="number of initializations")
-        self.parser.add_argument("--max_iter", type=int,
-                                 default=300, help="maximum number of iterations")
-        self.parser.add_argument("--tol", type=float,
-                                 default=1e-4, help="tolerance")
-        self.parser.add_argument("--report_freq", type=int,
-                                 default=1000, help="report frequency in iterations")
-        self.parser.add_argument("--save_freq", type=int,
-                                 default=1, help="save frequency in epochs")
 
 
 class TrainOptions(BaseOptions):
@@ -76,3 +59,20 @@ class TestOptions(BaseOptions):
                                  default=False, help="train or test")
         self.parser.add_argument("--model_path", type=str,
                                  default="", help="model path")
+
+
+class ClusteringOptions(BaseOptions):
+    def __init__(self):
+        super(ClusteringOptions, self).__init__()
+        self.parser.add_argument("--n_clusters", type=int,
+                                 default=10, help="number of clusters")
+        self.parser.add_argument("--n_init", type=int,
+                                 default=10, help="number of initializations")
+        self.parser.add_argument("--max_iter", type=int,
+                                 default=300, help="maximum number of iterations")
+        self.parser.add_argument("--tol", type=float,
+                                 default=1e-4, help="tolerance")
+        self.parser.add_argument("--report_freq", type=int,
+                                 default=1000, help="report frequency in iterations")
+        self.parser.add_argument("--save_freq", type=int,
+                                 default=1, help="save frequency in epochs")

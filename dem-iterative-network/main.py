@@ -3,6 +3,8 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
+import matplotlib.pyplot as plt
 
 from networks import define_networks
 from pipeline import define_dataset

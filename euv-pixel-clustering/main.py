@@ -3,6 +3,8 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
+import matplotlib.pyplot as plt
 
 from networks import define_networks
 from pipeline import define_dataset
@@ -91,7 +93,31 @@ class EPIC:
         print(f"Load model: {load_path}")
         return checkpoint.get("epoch", 0)
 
+    def save_snapshot(self, data, iteration):
+        snap_dir = os.path.join(self.options.save_root, "snapshot")
+        self.E.eval()
+        self.D.eval()
+        with torch.no_grad():
+            data = data.to(self.device)
+            z = self.E(data)
+            recon = self.D(z)
 
+        self.E.train()
+        self.D.train()
 
+        data = data.cpu().detach().numpy()[0]
+        recon = recon.cpu().detach().numpy()[0]
 
+        fig, ax = plt.subplots(2, self.options.num_euv_channels)
 
+        for i in range(self.options.num_euv_channels):
+            ax[0, i].imshow(data[i], cmap="gray", vmin=-1, vmax=1)
+            ax[0, i].axis("off")
+            ax[0, i].set_title(f"Original {i}")
+            ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
+            ax[1, i].axis("off")
+            ax[1, i].set_title(f"Reconstruction {i}", vmin=-1, vmax=1)
+
+        plt.savefig(f"{snap_dir}/{iteration}.png")
+        plt.close()
+        np.savez(f"{snap_dir}/{iteration}.npz", data=data, recon=recon)

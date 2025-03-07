@@ -13,7 +13,7 @@ class BaseOptions:
         self.parser.add_argument("--response_file_path", type=str,
                                  default="./data/undine_params.h5", help="Path to response file")
         self.parser.add_argument("--save_root", type=str,
-                                 default="/home/eunsu/Results/epic", help="save directory")
+                                 help="save directory")
         self.parser.add_argument("--batch_size", type=int,
                                  default=4, help="batch size")
         self.parser.add_argument("--num_workers", type=int,
@@ -55,7 +55,7 @@ class TrainOptions(BaseOptions):
         self.parser.add_argument("--report_freq", type=int,
                                  default=100, help="report frequency in iterations")
         self.parser.add_argument("--save_freq", type=int,
-                                 default=1, help="save frequency in epochs")
+                                 default=100, help="save frequency in iterations")
 
 
 class TestOptions(BaseOptions):

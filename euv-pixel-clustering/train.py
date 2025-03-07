@@ -39,7 +39,33 @@ def train():
     if options.model_path != '' :
         start_epoch = model.load_networks(options.model_path)
 
+    epoch = start_epoch
+    iteration = 0
+    while epoch < options.n_epochs :
+        epoch_start_time = time.time()
 
+        for i, data in enumerate(model.dataloader) :
+            loss = model.train_step(data)
+            iteration += 1
+
+            if i % options.report_freq == 0:
+                print(f"Epoch [{epoch}/{options.n_epochs}] Batch [{i}/{len(model.dataloader)}] Loss: {loss:.4f}")
+
+            if iteration % options.report_freq == 0 :
+                model.save_snapshot(data, iteration)
+
+            if iteration % options.save_freq == 0 :
+                model.save_networks(epoch)
+
+        epoch += 1
+        model.scheduler.step()
+
+        print(f"===== 에폭 {epoch} 완료 =====")
+        print(f"Time: {time.time() - epoch_start_time:.2f}초")
+        print(f"Loss: {loss.item():.4f})")
+
+        if epoch % options.save_freq == 0 :
+            model.save_networks(epoch)
 
 if __name__ == "__main__" :
     train()

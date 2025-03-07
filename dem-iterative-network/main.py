@@ -1,5 +1,6 @@
 import os
 
+import h5py
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -92,6 +93,36 @@ class DINE:
         print(f"Load model: {load_path}")
         return checkpoint.get("epoch", 0)
 
+    def save_snapshot(self, data, iteration):
+        snap_dir = os.path.join(self.options.save_root, "snapshot")
+        self.C.eval()
+        self.R.eval()
+        with torch.no_grad():
+            data = data.to(self.device)
+            dem = self.C(data)
+            recon = self.R(dem)
 
+        self.C.train()
+        self.R.train()
 
+        data = data.cpu().detach().numpy()[0]
+        dem = dem.cpu().detach().numpy()[0]
+        recon = recon.cpu().detach().numpy()[0]
 
+        fig, ax = plt.subplots(2, self.options.num_euv_channels, figsize=(4*self.options.num_euv_channels, 8))
+
+        for i in range(self.options.num_euv_channels):
+            ax[0, i].imshow(data[i], cmap="gray", vmin=-1, vmax=1)
+            ax[0, i].axis("off")
+            ax[0, i].set_title(f"Original {i}")
+            ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
+            ax[1, i].axis("off")
+            ax[1, i].set_title(f"Reconstruction {i}")
+        plt.savefig(f"{snap_dir}/{iteration}.png", dpi=300)
+        plt.close()
+
+        save_path = f"{snap_dir}/{iteration}.h5"
+        with h5py.File(save_path, "w") as f:
+            f.create_dataset("data", data=data)
+            f.create_dataset("dem", data=dem)
+            f.create_dataset("recon", data=recon)

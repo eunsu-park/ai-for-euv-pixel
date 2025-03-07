@@ -40,7 +40,6 @@ def train():
         start_epoch = model.load_networks(options.model_path)
 
     epoch = start_epoch
-    iteration = 0
     while epoch < options.n_epochs :
         epoch_start_time = time.time()
         losses = []        
@@ -48,7 +47,6 @@ def train():
         for i, data in enumerate(model.dataloader) :
             loss = model.train_step(data)
             losses.append(loss)
-            iteration += 1
 
             if i+1 % options.report_freq == 0:
                 print(f"Epoch [{epoch}/{options.n_epochs}] Batch [{i+1}/{len(model.dataloader)}] Loss: {loss:.4f}")

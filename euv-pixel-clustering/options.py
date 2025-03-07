@@ -13,7 +13,7 @@ class BaseOptions:
         self.parser.add_argument("--save_root", type=str,
                                  help="save directory")
         self.parser.add_argument("--batch_size", type=int,
-                                 default=4, help="batch size")
+                                 default=1, help="batch size")
         self.parser.add_argument("--num_workers", type=int,
                                  default=8, help="number of workers")
         self.parser.add_argument("--model_type", type=str,

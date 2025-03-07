@@ -1,5 +1,6 @@
 import os
 
+import h5py
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -106,6 +107,7 @@ class EPIC:
         self.D.train()
 
         data = data.cpu().detach().numpy()[0]
+        z = z.cpu().detach().numpy()[0]
         recon = recon.cpu().detach().numpy()[0]
 
         fig, ax = plt.subplots(2, self.options.num_euv_channels)
@@ -117,7 +119,11 @@ class EPIC:
             ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
             ax[1, i].axis("off")
             ax[1, i].set_title(f"Reconstruction {i}")
-
-        plt.savefig(f"{snap_dir}/{iteration}.png")
+        plt.savefig(f"{snap_dir}/{iteration}_reconstruction.png")
         plt.close()
-        np.savez(f"{snap_dir}/{iteration}.npz", data=data, recon=recon)
+
+        save_path = f"{snap_dir}/{iteration}.h5"
+        with h5py.File(save_path, "w") as f:
+            f.create_dataset("data", data=data)
+            f.create_dataset("z", data=z)
+            f.create_dataset("recon", data=recon)

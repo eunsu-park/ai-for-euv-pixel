@@ -116,7 +116,7 @@ class EPIC:
             ax[0, i].set_title(f"Original {i}")
             ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
             ax[1, i].axis("off")
-            ax[1, i].set_title(f"Reconstruction {i}", vmin=-1, vmax=1)
+            ax[1, i].set_title(f"Reconstruction {i}")
 
         plt.savefig(f"{snap_dir}/{iteration}.png")
         plt.close()

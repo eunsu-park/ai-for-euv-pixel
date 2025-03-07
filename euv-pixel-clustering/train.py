@@ -33,7 +33,8 @@ def train():
         epoch_start_time = time.time()
         losses = []
 
-        for i, data in enumerate(model.dataloader) :
+        for i, data_dict in enumerate(model.dataloader) :
+            data = data_dict["data"]
             loss = model.train_step(data)
             losses.append(loss)
 

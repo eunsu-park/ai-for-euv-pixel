@@ -33,7 +33,7 @@ class EPIC:
         self.experiment_dir = f"{options.save_root}/{options.experiment_name}"
         self.snapshot_dir = f"{self.experiment_dir}/snapshot"
         self.model_dir = f"{self.experiment_dir}/model"
-        if not os.path.exists(self.snap_dir) :
+        if not os.path.exists(self.snapshot_dir) :
             os.makedirs(self.snapshot_dir)
         if not os.path.exists(self.model_dir) :
             os.makedirs(self.model_dir)

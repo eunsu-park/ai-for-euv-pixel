@@ -44,6 +44,7 @@ class EPIC:
                                                           num_workers=options.num_workers)
 
         self.experiment_dir = f"{options.save_root}/{options.experiment_name}"
+        options.save_options(f"{self.experiment_dir}/options.txt")
         self.snapshot_dir = f"{self.experiment_dir}/snapshot"
         self.model_dir = f"{self.experiment_dir}/model"
         self.test_dir = f"{self.experiment_dir}/test"
@@ -53,8 +54,6 @@ class EPIC:
             os.makedirs(self.model_dir)
         if not os.path.exists(self.test_dir) :
             os.makedirs(self.test_dir)
-        if options.is_train is True :
-            options.save_options(f"{self.experiment_dir}/options.txt")
 
     def init_weights(self, net, init_type='normal', init_gain=0.02):
         def init_func(m):

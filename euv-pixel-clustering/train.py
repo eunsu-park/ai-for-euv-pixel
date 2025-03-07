@@ -1,15 +1,7 @@
-import os
 import time
 import random
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
 import numpy as np
-import matplotlib.pyplot as plt
-
-from options import TrainOptions
-from main import EPIC
 
 
 def set_seed(seed):
@@ -21,7 +13,11 @@ def set_seed(seed):
 
 
 def train():
-    options = TrainOptions().parse()
+
+    from options import Options
+    from main import EPIC
+
+    options = Options().parse()
     options.phase = "train"
 
     set_seed(options.seed)

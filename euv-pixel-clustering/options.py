@@ -47,7 +47,7 @@ class TrainOptions(BaseOptions):
         self.parser.add_argument("--n_epochs", type=int,
                                  default=10, help="number of epochs")
         self.parser.add_argument("--report_freq", type=int,
-                                 default=1000, help="report frequency in iterations")
+                                 default=100, help="report frequency in iterations")
         self.parser.add_argument("--save_freq", type=int,
                                  default=1, help="save frequency in epochs")
 

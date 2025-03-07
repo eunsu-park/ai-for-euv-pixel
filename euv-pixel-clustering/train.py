@@ -20,16 +20,18 @@ def train():
     epoch = start_epoch
     while epoch < options.n_epochs :
         epoch_start_time = time.time()
+        start_time = time.time()
         losses = []
-
         for i, data_dict in enumerate(model.dataloader) :
             data = data_dict["data"]
             loss = model.train_step(data)
             losses.append(loss)
 
             if (i+1) % options.report_freq == 0 :
-                print(f"Epoch [{epoch}/{options.n_epochs}] Batch [{i+1}/{len(model.dataloader)}] Loss: {loss:.4f}")
+                end_time = time.time()
+                print(f"Epoch [{epoch}/{options.n_epochs}] Batch [{i+1}/{len(model.dataloader)}] Loss: {loss:.4f} Time: {end_time - start_time:.2f} sec")
                 model.save_snapshot(data, epoch, i+1)
+                start_time = time.time
 
         epoch += 1
         model.scheduler.step()

@@ -60,18 +60,14 @@ class Reconstructor(nn.Module):
         self.register_buffer("factor", factor)
 
     def forward(self, x):
-        print(x.min(), x.max())
         x = x.view(x.size(0), x.size(2), x.size(3), x.size(1)) 
         x = torch.clip(x+1., min=0, max=None) * 7.
         x = torch.pow(2., x) - 1.
-        print(x.min(), x.max())
         x = torch.matmul(x, self.factor)
-        print(x.min(), x.max())
         x = x.view(x.size(0), x.size(3), x.size(1), x.size(2))
         x = torch.clip(x+1., min=1., max=None)
         x = torch.log2(x)
         x = x / 7. - 1.
-        print(x.min(), x.max())        
         return x
 
 def define_networks(options):

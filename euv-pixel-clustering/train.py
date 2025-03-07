@@ -46,6 +46,7 @@ def train():
 
         for i, data in enumerate(model.dataloader) :
             loss = model.train_step(data)
+            print(i, loss)
             losses.append(loss)
 
             if i+1 % options.report_freq == 0:

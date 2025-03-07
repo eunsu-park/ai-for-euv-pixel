@@ -19,7 +19,7 @@ class Encoder(nn.Module):
             kernel_size, stride, padding = 3, 1, 1
         model = []
         model += [nn.Conv2d(self.num_euv_channels, 1024, kernel_size, stride, padding), nn.SiLU()]
-        model += [nn.Conv2d(1024, self.num_latent_features, kernel_size, stride, padding), nn.Sigmoid()]
+        model += [nn.Conv2d(1024, self.num_latent_features, kernel_size, stride, padding), nn.Softmax(1)]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):

@@ -54,9 +54,6 @@ def train():
             if iteration % options.report_freq == 0 :
                 model.save_snapshot(data, iteration)
 
-            if iteration % options.save_freq == 0 :
-                model.save_networks(epoch)
-
         epoch += 1
         model.scheduler.step()
 

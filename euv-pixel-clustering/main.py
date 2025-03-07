@@ -44,7 +44,7 @@ class EPIC:
                                                           num_workers=options.num_workers)
 
         self.experiment_dir = f"{options.save_root}/{options.experiment_name}"
-        options.save_options(f"{self.experiment_dir}/options.txt")
+        # options.save_options(f"{self.experiment_dir}/options.txt")
         self.snapshot_dir = f"{self.experiment_dir}/snapshot"
         self.model_dir = f"{self.experiment_dir}/model"
         self.test_dir = f"{self.experiment_dir}/test"

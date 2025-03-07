@@ -53,9 +53,9 @@ class Options:
     def parse(self):
         return self.parser.parse_args()
     
-    def save_options(self, save_path):
-        args = self.parse()
-        with open(save_path, "w") as f:
-            for k, v in vars(args).items() :
-                f.write(f"{k}: {v}\n")
-            f.write("\n")
+    # def save_options(self, save_path):
+    #     args = self.parse()
+    #     with open(save_path, "w") as f:
+    #         for k, v in vars(args).items() :
+    #             f.write(f"{k}: {v}\n")
+    #         f.write("\n")

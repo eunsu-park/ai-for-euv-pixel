@@ -110,7 +110,7 @@ class EPIC:
         z = z.cpu().detach().numpy()[0]
         recon = recon.cpu().detach().numpy()[0]
 
-        fig, ax = plt.subplots(2, self.options.num_euv_channels)
+        fig, ax = plt.subplots(2, self.options.num_euv_channels, figsize=(4*self.options.num_euv_channels, 8))
 
         for i in range(self.options.num_euv_channels):
             ax[0, i].imshow(data[i], cmap="gray", vmin=-1, vmax=1)
@@ -119,7 +119,7 @@ class EPIC:
             ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
             ax[1, i].axis("off")
             ax[1, i].set_title(f"Reconstruction {i}")
-        plt.savefig(f"{snap_dir}/{iteration}.png")
+        plt.savefig(f"{snap_dir}/{iteration}.png", dpi=300)
         plt.close()
 
         save_path = f"{snap_dir}/{iteration}.h5"

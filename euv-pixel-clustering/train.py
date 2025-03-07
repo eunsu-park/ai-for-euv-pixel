@@ -41,17 +41,17 @@ def train():
 
     epoch = start_epoch
     iteration = 0
-    losses = []
     while epoch < options.n_epochs :
         epoch_start_time = time.time()
+        losses = []        
 
         for i, data in enumerate(model.dataloader) :
             loss = model.train_step(data)
             losses.append(loss)
             iteration += 1
 
-            if i % options.report_freq == 0:
-                print(f"Epoch [{epoch}/{options.n_epochs}] Batch [{i}/{len(model.dataloader)}] Loss: {loss:.4f}")
+            if i+1 % options.report_freq == 0:
+                print(f"Epoch [{epoch}/{options.n_epochs}] Batch [{i+1}/{len(model.dataloader)}] Loss: {loss:.4f}")
                 model.save_snapshot(data, i+1)
 
         epoch += 1
@@ -59,7 +59,7 @@ def train():
 
         print(f"===== 에폭 {epoch} 완료 =====")
         print(f"Time: {time.time() - epoch_start_time:.2f}초")
-        print(f"Loss: {loss.item():.4f})")
+        print(f"Loss: {np.mean(losses):.4f})")
 
         if epoch % options.save_freq == 0 :
             model.save_networks(epoch)

@@ -119,10 +119,10 @@ class EPIC:
             ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
             ax[1, i].axis("off")
             ax[1, i].set_title(f"Reconstruction {i}")
-        plt.savefig(f"{snap_dir}/{iteration}.png", dpi=300)
+        plt.savefig(f"{snap_dir}/{iteration:07d}.png", dpi=300)
         plt.close()
 
-        save_path = f"{snap_dir}/{iteration}.h5"
+        save_path = f"{snap_dir}/{iteration:07d}.h5"
         with h5py.File(save_path, "w") as f:
             f.create_dataset("data", data=data)
             f.create_dataset("z", data=z)

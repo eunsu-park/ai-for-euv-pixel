@@ -48,7 +48,6 @@ def train():
             loss = model.train_step(data)
             losses.append(loss)
 
-            print(i, loss, (i+1) % options.report_freq, (i+1) % options.report_freq == 0)
             if (i+1) % options.report_freq == 0 :
                 print(f"Epoch [{epoch}/{options.n_epochs}] Batch [{i+1}/{len(model.dataloader)}] Loss: {loss:.4f}")
                 model.save_snapshot(data, i+1)

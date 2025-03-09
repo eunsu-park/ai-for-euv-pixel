@@ -3,11 +3,12 @@ import torch.nn as nn
 
 
 class Encoder(nn.Module):
-    def __init__(self, num_euv_channels, num_latent_features, model_type="pixel"):
+    def __init__(self, num_euv_channels, num_latent_features, model_type="pixel", latent_output_type="sigmoid"):
         super(Encoder, self).__init__()
         self.num_euv_channels = num_euv_channels
         self.num_latent_features = num_latent_features
         self.model_type = model_type
+        self.latent_output_type = latent_output_type
         self.build()
         print(self)
         print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
@@ -19,8 +20,11 @@ class Encoder(nn.Module):
             kernel_size, stride, padding = 3, 1, 1
         model = []
         model += [nn.Conv2d(self.num_euv_channels, 1024, kernel_size, stride, padding), nn.SiLU()]
-        model += [nn.Conv2d(1024, self.num_latent_features, kernel_size, stride, padding), nn.Sigmoid()]
-        # model += [nn.Conv2d(1024, self.num_latent_features, kernel_size, stride, padding), nn.Softmax(1)]
+        model += [nn.Conv2d(1024, self.num_latent_features, kernel_size, stride, padding)]
+        if self.latent_output_type == "sigmoid":
+            model += [nn.Sigmoid()]
+        elif self.latent_output_type == "softmax":
+            model += [nn.Softmax(dim=1)]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):

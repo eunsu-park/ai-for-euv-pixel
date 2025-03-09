@@ -26,6 +26,9 @@ class Options:
         self.parser.add_argument("--model_type", type=str,
                                  choices=["pixel", "convolution"],
                                  default="pixel", help="model type")
+        self.parser.add_argument("--latent_output_type", type=str,
+                                 choices=["sigmoid", "softmax"],
+                                 default=None, help="latent output type")
         self.parser.add_argument("--waves", type=int, nargs="+",
                                  default=[94, 131, 171, 193, 211, 335],
                                  help="wavelengths")
@@ -45,7 +48,7 @@ class Options:
         self.parser.add_argument("--beta2", type=float,
                                  default=0.999, help="beta2 parameter of Adam optimizer")
         self.parser.add_argument("--n_epochs", type=int,
-                                 default=10, help="number of epochs")
+                                 default=100, help="number of epochs")
         self.parser.add_argument("--report_freq", type=int,
                                  default=1000, help="report frequency in iterations")
         self.parser.add_argument("--save_freq", type=int,

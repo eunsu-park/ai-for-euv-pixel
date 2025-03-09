@@ -21,10 +21,13 @@ class EPIC:
 
         self.E = Encoder(num_euv_channels=options.num_euv_channels,
                          num_latent_features=options.num_latent_features,
-                         model_type=options.model_type).to(self.device)
+                         model_type=options.model_type,
+                         latent_output_type=options.latent_output_type
+                        ).to(self.device)
         self.D = Decoder(num_euv_channels=options.num_euv_channels,
                          num_latent_features=options.num_latent_features,
-                         model_type=options.model_type).to(self.device)
+                         model_type=options.model_type
+                        ).to(self.device)
         self.init_weights(self.E, init_type=options.init_type)
         self.init_weights(self.D, init_type=options.init_type)
 

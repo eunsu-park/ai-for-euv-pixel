@@ -115,13 +115,13 @@ class EPIC:
 
                 for i in range(len(file_path)) :
                     file_name = os.path.basename(file_path[i])
-                    save_path = f"{self.test_dir}/{file_name}.h5"
+                    save_path = f"{self.test_dir}/{file_name}"
                     with h5py.File(save_path, "w") as f:
                         f.create_dataset("data", data=data[i])
                         f.create_dataset("z", data=z[i])
                         f.create_dataset("recon", data=recon[i])
                 print(f"Test [{i}/{len(self.dataloader)}] Loss: {loss:.4f}")
-                losses.append(loss)
+                losses.append(loss.item())
         print(f"Average Loss: {np.mean(losses):.4f}")
 
     def save_networks(self, epoch):

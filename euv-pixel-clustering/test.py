@@ -10,6 +10,8 @@ def test():
 
     model = EPIC(options)
 
+    print(len(model.dataloader))
+
     if not options.model_path :
         raise ValueError("The model path must be provided for testing.")
 

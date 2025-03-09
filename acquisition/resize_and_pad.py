@@ -1,4 +1,5 @@
 import os
+import h5py
 import datetime
 import warnings
 from glob import glob
@@ -95,9 +96,14 @@ def image_func(data):
     return image
 
 
-def main_func(load_dir, save_root):
+def main_func(load_dir, save_root, overwrite=False):
 
-    date = datetime.datetime.strptime(load_dir.split('/')[-1], "%Y%m%d%H")
+    try :
+        date = datetime.datetime.strptime(load_dir.split('/')[-1], "%Y%m%d%H")
+    except :
+        return
+    
+
     year = date.year
     month = date.month
     day = date.day
@@ -106,17 +112,20 @@ def main_func(load_dir, save_root):
     save_dir = f"{save_root}/{year:04d}"
     save_name = f"aia.euv.{year:04d}-{month:02d}-{day:02d}-{hour:02d}-00-00"
 
+    if os.path.exists(os.path.join(save_dir, f"{save_name}.h5")) and not overwrite:
+        return
+
     list_fits = glob(os.path.join(load_dir, "*.fits"))
-    if len(list_fits) != 6 :
+    if len(list_fits) != 7 :
         return
     
-    tree = {}
+    database = {}
     images = {}
     
     for file_path in list_fits :
         hdu = fits.open(file_path)[-1]
         header = hdu.header
-        data = hdu.data
+        data = hdu.data.astype(np.float64)
         quality = header["QUALITY"]
         if quality != 0 :
             return
@@ -126,36 +135,35 @@ def main_func(load_dir, save_root):
             data = pad(data)
         data = interpol(data, (1024, 1024))
         image = image_func(data)
-        tree[str(header["WAVELNTH"])] = data
+        database[str(header["WAVELNTH"])] = data
         images[str(header["WAVELNTH"])] = image
 
-    af = asdf.AsdfFile(tree)
-    af.write_to(os.path.join(save_dir, f"{save_name}.asdf"))
-    
-    images = np.vstack((
-        np.hstack((images["94"], images["131"], images["171"])),
-        np.hstack((images["193"], images["211"], images["335"]))
-    ))
+    with h5py.File(os.path.join(save_dir, f"{save_name}.h5"), "w") as f:
+        for key, value in database.items():
+            f.create_dataset(key, data=value)
 
+    images = np.hstack((images["94"], images["131"], images["171"], images["193"], images["211"], images["304"], images["335"]))
     imsave(os.path.join(save_dir, f"{save_name}.png"), images)
-    print(os.path.join(save_dir, f"{save_name}.asdf"))
+    tmp = database["94"]
+    print(f"{save_name} is saved, {tmp.min()}, {tmp.max()}, {tmp.shape}, {tmp.dtype}")
     
 
 if __name__ == "__main__" :
     freeze_support()
     warnings.filterwarnings('ignore')
 
-    load_root = "/storage/aisolo/aia_pixel_dl_preped"
-    save_root = "/storage/aisolo/aia_pixel_dl_resized"
+
+    load_root = "/home/eunsu/Data/pixel/preped"
+    save_root = "/home/eunsu/Data/pixel/resized"
 
     list_dir = glob(os.path.join(f"{load_root}", "*", "*"))
     nb_dir = len(list_dir)
     print(nb_dir)
 
-#    main_func(list_dir[0], save_root)
+    # main_func(list_dir[0], save_root)
 
-    with Pool(16) as pool:
-        pool.starmap(main_func, [(load_dir, save_root) for load_dir in list_dir])
+    with Pool(8) as pool:
+        pool.starmap(main_func, [(load_dir, save_root, False) for load_dir in list_dir])
         pool.close()
 
     # with 

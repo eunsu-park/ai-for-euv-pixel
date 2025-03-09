@@ -13,7 +13,7 @@ import pickle
 import astropy.units as u
 import aiapy.psf
 from sunpy.map import Map
-from aiapy.calibrate import register, update_pointing, fix_observer_location
+from aiapy.calibrate import register, update_pointing
 from aiapy.calibrate import fetch_spikes, respike
 from aiapy.calibrate import correct_degradation
 from aiapy.calibrate.util import get_correction_table, get_pointing_table
@@ -144,7 +144,6 @@ def load_psfs(file_path):
 
 def preparation(file_path,
     do_update_pointing=False, pointing_table=None,
-    do_fix_observer_location=False,
     do_respike=False,
     do_deconvolve=False, psfs=None,
     do_correct_degradation=False, correction_table=None) :
@@ -158,10 +157,6 @@ def preparation(file_path,
             aia_map = update_pointing(aia_map)
         else :
             aia_map = update_pointing(aia_map, pointing_table=pointing_table)
-
-    ## Fix observer location
-    if do_fix_observer_location :
-        aia_map = fix_observer_location(aia_map)
 
     ## Respike
     if do_respike :
@@ -200,14 +195,12 @@ def preparation(file_path,
     return aia_map
 
 def get_preparation_func(do_update_pointing, pointing_table,
-    do_fix_observer_location,
     do_respike,
     do_deconvolve, psfs,
     do_correct_degradation, correction_table) :
 
     return partial(preparation,
         do_update_pointing=do_update_pointing, pointing_table=pointing_table,
-        do_fix_observer_location=do_fix_observer_location,
         do_respike=do_respike,
         do_deconvolve=do_deconvolve, psfs=psfs,
         do_correct_degradation=do_correct_degradation, correction_table=correction_table)
@@ -216,16 +209,16 @@ def get_preparation_func(do_update_pointing, pointing_table,
 def save_image(aia_map, save_path):
     data = aia_map.data
     data = np.clip(data, 0, None)
-    data = np.log2(data+1)
-    data = data * (255./14.)
+    data = np.log10(data+1)
+    data = data * (255./4.)
     image = np.clip(data, 0, 255).astype(np.uint8)
     imsave(save_path, image)
 
 
-def select_only_one(dt_start, data_root):
+def select_only_one(dt_start, data_root, waves):
 
     list_fits_final = []
-    waves = (94, 131, 171, 193, 211, 335)
+    waves = (94, 131, 171, 193, 211, 304, 335)
 
     year = dt_start.year
     month = dt_start.month
@@ -234,24 +227,55 @@ def select_only_one(dt_start, data_root):
     minute = dt_start.minute
     second = dt_start.second
 
+    load_dir = f"{data_root}/{year:04d}/{year:04d}{month:02d}{day:02d}{hour:02d}"
+
     for wave in waves :
-        dir_path = os.path.join(data_root, f"{wave:d}", f"{year:04d}", f"{year:04d}{month:02d}{day:02d}")
-        file_pattern = f"aia.{year:04d}-{month:02d}-{day:02d}-{hour:02d}-*-*.{wave:d}.fits"
-        list_fits = sorted(glob(os.path.join(dir_path, file_pattern)))
+        # dir_path = os.path.join(data_root, f"{wave:d}", f"{year:04d}", f"{year:04d}{month:02d}{day:02d}")
+        # file_pattern = f"aia.{year:04d}-{month:02d}-{day:02d}-{hour:02d}-*-*.{wave:d}.fits"
+        # list_fits = sorted(glob(os.path.join(dir_path, file_pattern)))
+        file_pattern = f"aia.lev1_euv_12s.*.{wave:d}.image_lev1.fits"
+        list_fits = sorted(glob(os.path.join(load_dir, file_pattern)))
         nb_fits = len(list_fits)
         if nb_fits > 0 :
-            file_path = list_fits[0]
-            file_name = os.path.basename(file_path)
-            _, date, _, _ = file_name.split(".")
-            f_year, f_month, f_day, f_hour, f_minute, f_second = date.split("-")
-            datetime_fits = datetime.datetime(int(f_year), int(f_month), int(f_day), int(f_hour), int(f_minute), int(f_second))
-            # hdu = fits.open(file_path)[-1]
-            # header = hdu.header
-            # t_rec = header["T_REC"]
-            # datetime_fits = Time(t_rec).datetime
-            datetime_dif = abs(datetime_fits - dt_start)
+            datetime_deltas = []
+
+            # Maps = Map(list_fits)
+            # for Map in Maps :
+            #     datetime_fits = Map.date
+            #     datetime_dif = abs(datetime_fits - dt_start)
+            #     datetime_deltas.append(datetime_dif)
+
+            for file_path in list_fits :
+                hdu = fits.open(file_path)[-1]
+                header = hdu.header
+                t_rec = header["T_REC"]
+                datetime_fits = Time(t_rec).datetime
+                datetime_dif = abs(datetime_fits - dt_start)
+                datetime_deltas.append(datetime_dif)
+
+            index = np.argmin(datetime_deltas)
+
+            datetime_dif = datetime_deltas[index]
             if datetime_dif.total_seconds() < 12 :
+                file_path = list_fits[index]
                 list_fits_final.append(file_path)
+
+
+
+
+
+            # file_path = list_fits[0]
+            # file_name = os.path.basename(file_path)
+            # _, date, _, _ = file_name.split(".")
+            # f_year, f_month, f_day, f_hour, f_minute, f_second = date.split("-")
+            # datetime_fits = datetime.datetime(int(f_year), int(f_month), int(f_day), int(f_hour), int(f_minute), int(f_second))
+            # # hdu = fits.open(file_path)[-1]
+            # # header = hdu.header
+            # # t_rec = header["T_REC"]
+            # # datetime_fits = Time(t_rec).datetime
+            # datetime_dif = abs(datetime_fits - dt_start)
+            # if datetime_dif.total_seconds() < 12 :
+            #     list_fits_final.append(file_path)
 
     if len(list_fits_final) == len(waves) :
         return list_fits_final

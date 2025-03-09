@@ -20,7 +20,7 @@ class Options:
         self.parser.add_argument("--batch_size", type=int,
                                  default=1, help="batch size")
         self.parser.add_argument("--num_workers", type=int,
-                                 default=8, help="number of workers")
+                                 default=4, help="number of workers")
         self.parser.add_argument("--experiment_name", type=str,
                                  help="experiment name")        
         self.parser.add_argument("--model_type", type=str,

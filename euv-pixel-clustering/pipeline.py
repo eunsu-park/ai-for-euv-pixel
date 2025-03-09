@@ -4,6 +4,24 @@ import numpy as np
 import torch
 
 
+class ReadData:
+    def __init__(self, waves):
+        self.waves = waves
+    def __call__(self, file_path):
+        data = []
+        with h5py.File(file_path, "r") as f:
+            for n in range(len(self.waves)):
+                wave_data = f[str(self.waves[n])][:]
+                wave_data = np.expand_dims(wave_data, axis=0)
+                data.append(wave_data)
+        data = np.concatenate(data, axis=0)
+        data = np.nan_to_num(data, nan=0.0)
+        data = np.clip(data + 1., 1., None)
+        data = np.log10(data)
+        data = data / 2.0 - 1.0
+        return data
+
+
 class ToTensor:
     def __init__(self, dtype: torch.dtype=torch.float32):
         self.dtype = dtype
@@ -17,26 +35,15 @@ class TrainDataset(torch.utils.data.Dataset):
         self.data_list = glob(self.data_pattern)
         self.num_data = len(self.data_list)
         print(f"Number of training data: {self.num_data}")
+        self.read_data = ReadData(waves)
         self.to_tensor = ToTensor()
-        self.waves = waves
 
     def __len__(self):
         return self.num_data
 
     def __getitem__(self, idx):
         file_path = self.data_list[idx]
-        data = []
-        with h5py.File(file_path, "r") as f:
-            for n in range(len(self.waves)):
-                wave_data = f[str(self.waves[n])][:]
-                wave_data = np.expand_dims(wave_data, axis=0)
-                data.append(wave_data)
-        data = np.concatenate(data, axis=0)
-
-        data = np.nan_to_num(data, nan=0.0)
-        data = np.clip(data + 1., 1., None)
-        data = np.log10(data)
-        data = data / 2.0 - 1.0
+        data = self.read_data(file_path)
         x = np.random.choice(data.shape[1] - 256)
         y = np.random.choice(data.shape[2] - 256)
         data = data[:, x:x+256, y:y+256]
@@ -49,26 +56,15 @@ class TestDataset(torch.utils.data.Dataset):
         self.data_pattern = f"{data_root}/test/*.h5"
         self.data_list = glob(self.data_pattern)
         self.num_data = len(self.data_list)
+        self.read_data = ReadData(waves)
         self.to_tensor = ToTensor()
-        self.waves = waves
 
     def __len__(self):
         return self.num_data
 
     def __getitem__(self, idx):
         file_path = self.data_list[idx]
-        data = []
-        with h5py.File(file_path, "r") as f:
-            for n in range(len(self.waves)):
-                wave_data = f[str(self.waves[n])][:]
-                wave_data = np.expand_dims(wave_data, axis=0)
-                data.append(wave_data)
-        data = np.concatenate(data, axis=0)
-
-        data = np.nan_to_num(data, nan=0.0)
-        data = np.clip(data + 1., 1., None)
-        data = np.log10(data)
-        data = data / 2.0 - 1.0
+        data = self.read_data(file_path)
         data = self.to_tensor(data)
         return {"data": data, "file_path": file_path}
 

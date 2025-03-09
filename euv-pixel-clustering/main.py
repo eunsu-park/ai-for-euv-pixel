@@ -32,13 +32,13 @@ class EPIC:
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=options.n_epochs // 4, gamma=0.5)
 
         if options.phase == "train" :
-            self.dataset = TrainDataset(data_root=options.data_root)
+            self.dataset = TrainDataset(data_root=options.data_root, waves=options.waves)
             self.dataloader = torch.utils.data.DataLoader(self.dataset,
                                                           batch_size=options.batch_size,
                                                           shuffle=True,
                                                           num_workers=options.num_workers)
         elif options.phase == "test" :
-            self.dataset = TestDataset(data_root=options.data_root)
+            self.dataset = TestDataset(data_root=options.data_root, waves=options.waves)
             self.dataloader = torch.utils.data.DataLoader(self.dataset,
                                                           batch_size=options.batch_size,
                                                           shuffle=False,

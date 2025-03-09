@@ -12,13 +12,13 @@ class ToTensor:
 
 
 class TrainDataset(torch.utils.data.Dataset):
-    def __init__(self, data_root):
+    def __init__(self, data_root, waves):
         self.data_pattern = f"{data_root}/train/*.h5"
         self.data_list = glob(self.data_pattern)
         self.num_data = len(self.data_list)
         print(f"Number of training data: {self.num_data}")
         self.to_tensor = ToTensor()
-        self.waves = [94, 131, 171, 193, 211, 304, 335]
+        self.waves = waves
 
     def __len__(self):
         return self.num_data
@@ -45,19 +45,30 @@ class TrainDataset(torch.utils.data.Dataset):
 
 
 class TestDataset(torch.utils.data.Dataset):
-    def __init__(self, data_root):
+    def __init__(self, data_root, waves):
         self.data_pattern = f"{data_root}/test/*.h5"
         self.data_list = glob(self.data_pattern)
         self.num_data = len(self.data_list)
         self.to_tensor = ToTensor()
+        self.waves = waves
 
     def __len__(self):
         return self.num_data
 
     def __getitem__(self, idx):
         file_path = self.data_list[idx]
+        data = []
         with h5py.File(file_path, "r") as f:
-            data = f["data"][:]
+            for n in range(len(self.waves)):
+                wave_data = f[str(self.waves[n])][:]
+                wave_data = np.expand_dims(wave_data, axis=0)
+                data.append(wave_data)
+        data = np.concatenate(data, axis=0)
+
+        data = np.nan_to_num(data, nan=0.0)
+        data = np.clip(data + 1., 1., None)
+        data = np.log10(data)
+        data = data / 2.0 - 1.0
         data = self.to_tensor(data)
         return {"data": data, "file_path": file_path}
 
@@ -67,8 +78,8 @@ if __name__ == "__main__" :
     options = Options().parse()
 
     options.phase = "train"
-
-    dataset = TrainDataset(data_root=options.data_root)
+    
+    dataset = TrainDataset(data_root=options.data_root, waves=options.waves)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=options.batch_size,
                                              shuffle=True, num_workers=options.num_workers)
 

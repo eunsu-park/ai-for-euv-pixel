@@ -26,8 +26,9 @@ class Options:
         self.parser.add_argument("--model_type", type=str,
                                  choices=["pixel", "convolution"],
                                  default="pixel", help="model type")
-        self.parser.add_argument("--num_euv_channels", type=int,
-                                 default=7, help="number of EUV channels")
+        self.parser.add_argument("--waves", type=int, nargs="+",
+                                 default=[94, 131, 171, 193, 211, 335],
+                                 help="wavelengths")
         self.parser.add_argument("--num_latent_features", type=int,
                                  default=50, help="number of latent features")
         self.parser.add_argument("--init_type", type=str,
@@ -51,4 +52,9 @@ class Options:
                                  default=1, help="save frequency in epochs")
 
     def parse(self):
-        return self.parser.parse_args()
+        args = self.parser.parse_args()
+        args.num_euv_channels = len(args.waves)
+        # self.parser.add_argument("--num_euv_channels", type=int,
+        #                          default=6, help="number of EUV channels")
+        # return self.parser.parse_args()
+        return args

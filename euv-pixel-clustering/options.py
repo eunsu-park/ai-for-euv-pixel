@@ -27,7 +27,7 @@ class Options:
                                  choices=["pixel", "convolution"],
                                  default="pixel", help="model type")
         self.parser.add_argument("--num_euv_channels", type=int,
-                                 default=6, help="number of EUV channels")
+                                 default=7, help="number of EUV channels")
         self.parser.add_argument("--num_latent_features", type=int,
                                  default=50, help="number of latent features")
         self.parser.add_argument("--init_type", type=str,

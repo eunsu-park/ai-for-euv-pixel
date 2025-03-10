@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from networks import Calculator, Reconstructor
-from pipeline import define_dataset
+from pipeline import TrainDataset, TestDataset
 from utils import save_options
 
 
@@ -28,13 +28,36 @@ class DINE:
         self.R = Reconstructor(factor).to(self.device).double()
         self.init_weights(self.C)
 
-        self.criterion = nn.MSELoss()
+        if options.loss_function == "mse" :
+            self.criterion = nn.MSELoss()
+        elif options.loss_function == "mae" :
+            self.criterion = nn.L1Loss()
+        else :
+            raise NotImplementedError(f"Loss function [{options.loss_function}] is not implemented")
         self.optimizer = optim.Adam(list(self.C.parameters()),
                                     lr=options.lr, betas=(options.beta1, options.beta2))
-        # self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=options.n_epochs // 4, gamma=0.5)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=options.max_iteration // 4, gamma=0.5)
 
-        self.data = define_dataset(options)
-        self.data = self.data.to(self.device).double()
+        if options.metric_function == "mse" :
+            self.metric = nn.MSELoss()
+        elif options.metric_function == "mae" :
+            self.metric = nn.L1Loss()
+        else :
+            raise NotImplementedError(f"Metric function [{options.metric_function}] is not implemented")
+
+        if options.phase == "train" :
+            self.dataset = TrainDataset(options.data_file_path,
+                                        options.waves,
+                                        options.max_iteration)
+            self.dataloader = torch.utils.data.DataLoader(self.dataset,
+                                                          batch_size=1,
+                                                          shuffle=True)
+        elif options.phase == "test" :
+            self.dataset = TestDataset(options.data_file_path,
+                                       options.waves)
+            self.dataloader = torch.utils.data.DataLoader(self.dataset,
+                                                          batch_size=1,
+                                                          shuffle=False)
 
         self.experiment_dir = f"{options.save_root}/{options.experiment_name}"
         self.snapshot_dir = f"{self.experiment_dir}/snapshot"
@@ -74,17 +97,18 @@ class DINE:
                 for param in net.parameters():
                     param.requires_grad = requires_grad
 
-    def train_step(self):
+    def train_step(self, data):
         self.C.train()
         self.R.train()
         self.optimizer.zero_grad()
-        data = self.data.clone()
+        data = data.to(self.device).double()
         dem = self.C(data)
         recon = self.R(dem)
         loss = self.criterion(recon, data)
+        metric = self.metric(recon, data)
         loss.backward()
         self.optimizer.step()
-        return loss.item()
+        return loss.item(), metric.item()
 
     def save_networks(self, iteration):
         save_path = f"{self.experiment_dir}/model.pth"
@@ -106,8 +130,8 @@ class DINE:
         print(f"Load model: {model_path}")
         return checkpoint.get("iteration", 0)
 
-    def save_snapshot(self, data, epoch, iteration):
-        save_path = f"{self.snapshot_dir}/{epoch:04d}_{iteration:07d}"
+    def save_snapshot(self, data, iteration):
+        save_path = f"{self.snapshot_dir}/{iteration:07d}"
         self.C.eval()
         self.R.eval()
         with torch.no_grad():
@@ -123,10 +147,10 @@ class DINE:
         for i in range(self.options.num_euv_channels):
             ax[0, i].imshow(data[i], cmap="gray", vmin=-1, vmax=1)
             ax[0, i].axis("off")
-            ax[0, i].set_title(f"Original {i}")
+            ax[0, i].set_title(f"Original {self.options.waves[i]}")
             ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
             ax[1, i].axis("off")
-            ax[1, i].set_title(f"Reconstruction {i}")
+            ax[1, i].set_title(f"Reconstruction {self.options.waves[i]}")
         plt.savefig(f"{save_path}.png", dpi=300)
         plt.close()
 

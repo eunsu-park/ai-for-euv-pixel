@@ -41,6 +41,12 @@ class Options:
                                  default="", help="model path")
 
         # Options for training
+        self.parser.add_argument("--loss_function", type=str,
+                                 choices=["mse", "mae"],
+                                 default="mse", help="loss function")
+        self.parser.add_argument("--metric_function", type=str,
+                                 choices=["mse", "mae"],
+                                 default="mae", help="metric function")
         self.parser.add_argument("--lr", type=float,
                                  default=0.0002, help="learning rate")
         self.parser.add_argument("--beta1", type=float,

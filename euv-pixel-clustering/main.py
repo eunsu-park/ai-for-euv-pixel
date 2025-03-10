@@ -31,10 +31,21 @@ class EPIC:
         self.init_weights(self.E, init_type=options.init_type)
         self.init_weights(self.D, init_type=options.init_type)
 
-        self.criterion = nn.MSELoss()
+        if options.loss_function == "mse" :
+            self.criterion = nn.MSELoss()
+        elif options.loss_function == "mae" :
+            self.criterion = nn.L1Loss()
+        else :
+            raise NotImplementedError(f"Loss function [{options.loss_function}] is not implemented")
         self.optimizer = optim.Adam(list(self.E.parameters()) + list(self.D.parameters()),
                                     lr=options.lr, betas=(options.beta1, options.beta2))
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=options.n_epochs // 4, gamma=0.5)
+        if options.metric_function == "mse" :
+            self.metric = nn.MSELoss()
+        elif options.metric_function == "mae" :
+            self.metric = nn.L1Loss()
+        else :
+            raise NotImplementedError(f"Metric function [{options.metric_function}] is not implemented")
 
         if options.phase == "train" :
             self.dataset = TrainDataset(data_root=options.data_root, waves=options.waves)
@@ -98,14 +109,16 @@ class EPIC:
         z = self.E(data)
         recon = self.D(z)
         loss = self.criterion(recon, data)
+        metric = self.metric(recon, data)
         loss.backward()
         self.optimizer.step()
-        return loss.item()
+        return loss.item(), metric.item()
     
     def test(self):
         self.E.eval()
         self.D.eval()
         losses = []
+        metrics = []
         with torch.no_grad():
             for i, data_dict in enumerate(self.dataloader):
                 data = data_dict["data"].to(self.device)
@@ -113,6 +126,7 @@ class EPIC:
                 z = self.E(data)
                 recon = self.D(z)
                 loss = self.criterion(recon, data)
+                metric = self.metric(recon, data)
 
                 data = data.cpu().detach().numpy()
                 z = z.cpu().detach().numpy()
@@ -125,9 +139,10 @@ class EPIC:
                         f.create_dataset("data", data=data[i])
                         f.create_dataset("z", data=z[i])
                         f.create_dataset("recon", data=recon[i])
-                print(f"Test [{i}/{len(self.dataloader)}] Loss: {loss:.4f}")
+                print(f"Test [{i}/{len(self.dataloader)}] Loss: {loss:.4f}, Metric: {metric:.4f}")
                 losses.append(loss.item())
-        print(f"Average Loss: {np.mean(losses):.4f}")
+                metrics.append(metric.item())
+        print(f"Average Loss: {np.mean(losses):.4f}, Average Metric: {np.mean(metrics):.4f}")
 
     def save_networks(self, epoch):
         save_path = os.path.join(self.model_dir, f"{epoch}.pth")

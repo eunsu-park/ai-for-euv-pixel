@@ -24,8 +24,9 @@ class Options:
         self.parser.add_argument("--model_type", type=str,
                                  choices=["pixel", "convolution"],
                                  default="pixel", help="model type")
-        self.parser.add_argument("--num_euv_channels", type=int,
-                                 default=6, help="number of EUV channels")
+        self.parser.add_argument("--waves", type=int, nargs="+",
+                                 default=[94, 131, 171, 193, 211, 335],
+                                 help="wavelengths")
         self.parser.add_argument("--num_temperature_bins", type=int,
                                  default=43, help="number of temperature bins")
         self.parser.add_argument("--min_temperature", type=float,
@@ -39,16 +40,32 @@ class Options:
                                  default="", help="model path")
 
         # Options for training
+        self.parser.add_argument("--loss_function", type=str,
+                                 choices=["mse", "mae"],
+                                 default="mse", help="loss function")
+        self.parser.add_argument("--metric_function", type=str,
+                                 choices=["mse", "mae"],
+                                 default="mae", help="metric function")
         self.parser.add_argument("--lr", type=float,
                                  default=0.0002, help="learning rate")
         self.parser.add_argument("--beta1", type=float,
                                  default=0.5, help="beta1 parameter of Adam optimizer")
         self.parser.add_argument("--beta2", type=float,
                                  default=0.999, help="beta2 parameter of Adam optimizer")
+        self.parser.add_argument("--target_threshold", type=float,
+                                 default=0.1, help="target threshold")
+        self.parser.add_argument("--convegence_threshold", type=float,
+                                 default=0.001, help="convergence threshold")
         self.parser.add_argument("--max_iteration", type=int,
                                  default=1000, help="number of iterations")
-        self.parser.add_argument("--eps", type=float,
-                                 default=1e-6, help="epsilon for loss limit")
+        self.parser.add_argument("--snapshot_interval", type=int,
+                                 default=100, help="snapshot interval")
+
 
     def parse(self):
-        return self.parser.parse_args()
+        args = self.parser.parse_args()
+        args.num_euv_channels = len(args.waves)
+        # self.parser.add_argument("--num_euv_channels", type=int,
+        #                          default=6, help="number of EUV channels")
+        # return self.parser.parse_args()
+        return args

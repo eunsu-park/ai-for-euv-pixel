@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import h5py
+from data.functions import denormalize_dem, normalize_euv
 
 
 class Calculator(nn.Module):
@@ -36,22 +37,26 @@ class Reconstructor(nn.Module):
     def __init__(self, factor):
         super(Reconstructor, self).__init__()
         self.register_buffer("factor", factor)
+        print(self.factor.size(), self.factor.dtype, self.factor.device)
+        print(self.factor.min(), self.factor.max())
 
     def forward(self, x):
-        x = x.view(x.size(0), x.size(2), x.size(3), x.size(1)) 
-        x = torch.clip(x+1., min=0, max=None) * 7.
-        x = torch.pow(2., x) - 1.
+        # (B, C, H, W) -> (B, H, W, C)
+        x = x.transpose(1, 2)
+        x = x.transpose(2, 3)
+        x = denormalize_dem(x)
         x = torch.matmul(x, self.factor)
-        x = x.view(x.size(0), x.size(3), x.size(1), x.size(2))
-        x = torch.clip(x+1., min=1., max=None)
-        x = torch.log2(x)
-        x = x / 7. - 1.
+        # (B, H, W, C) -> (B, C, H, W)
+        x = x.transpose(2, 3)
+        x = x.transpose(1, 2)
+        x = normalize_euv(x)
         return x
 
 
 if __name__ == "__main__" :
 
     torch.set_default_dtype(torch.float64)
+    from pipeline import TrainDataset
 
     from options import Options
     options = Options().parse()
@@ -65,18 +70,58 @@ if __name__ == "__main__" :
     factor = torch.tensor(factor).double()
     R = Reconstructor(factor).to(options.device).double()
 
-    inp = torch.randn(options.batch_size,
-                      options.num_euv_channels,
-                      256, 256).to(options.device)
-    inp = torch.clip(inp, min=-1., max=1.)
-    out = C(inp)
-    print(out.size())
+    train_dataset = TrainDataset(options.data_file_path, options.waves, options.max_iteration)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=True)
 
-    print(inp.dtype)
-    print(C.model[0].weight.dtype)
+    for i, data in enumerate(train_loader):
+        inp = data.to(options.device).double()
+        print(inp.size(), inp.dtype, inp.device, inp.min(), inp.max())
 
-    factor = R.factor
-    print(f"factor size : {factor.size()}, factor dtype : {factor.dtype}, factor device : {factor.device}")
+        out = C(inp)
+        print(out.size(), out.dtype, out.device, out.min(), out.max())
 
-    rec = R(out)
-    print(rec.size())
+        # (B, C, H, W) -> (B, H, W, C)
+        # rec = rec.transpose(1, 2)
+        # rec = rec.transpose(2, 3)
+        # print(rec.size(), rec.dtype, rec.device, rec.min(), rec.max())
+        # rec = denormalize_dem(rec)
+        # print(rec.size(), rec.dtype, rec.device, rec.min(), rec.max())
+        # rec = torch.matmul(rec, factor)
+        # print(rec.size(), rec.dtype, rec.device, rec.min(), rec.max())
+        # # (B, H, W, C) -> (B, C, H, W)
+        # rec = rec.transpose(2, 3)
+        # rec = rec.transpose(1, 2)
+        # print(rec.size(), rec.dtype, rec.device, rec.min(), rec.max())
+        # rec = normalize_euv(rec)
+        # print(rec.size(), rec.dtype, rec.device, rec.min(), rec.max())
+
+        rec = R(out)
+        print(rec.size(), rec.dtype, rec.device, rec.min(), rec.max())
+
+        break
+
+        if i == 10 :
+            break
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    img = np.vstack([
+        np.hstack([data[0, i].numpy() for i in range(6)]),
+        np.hstack([rec.detach().numpy()[0, i] for i in range(6)])])
+
+    plt.imshow(img, cmap="gray")
+    plt.show()
+
+
+    # out = C(inp)
+    # print(out.size())
+
+    # print(inp.dtype)
+    # print(C.model[0].weight.dtype)
+
+    # factor = R.factor
+    # print(f"factor size : {factor.size()}, factor dtype : {factor.dtype}, factor device : {factor.device}")
+
+    # rec = R(out)
+    # print(rec.size())

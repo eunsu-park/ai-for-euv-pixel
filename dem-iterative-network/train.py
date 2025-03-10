@@ -45,7 +45,6 @@ def train():
         if iteration % options.snapshot_interval == 0 :
             model.save_snapshot(data, iteration)
 
-
         # if np.mean(losses_last_10) < options.eps :
         #     print(f"Converged at iteration {i+start_iteration}")
             # break

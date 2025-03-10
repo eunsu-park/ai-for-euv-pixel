@@ -53,14 +53,16 @@ class Options:
         self.parser.add_argument("--beta2", type=float,
                                  default=0.999, help="beta2 parameter of Adam optimizer")
         self.parser.add_argument("--target_threshold", type=float,
-                                 default=0.1, help="target threshold")
+                                 default=0.001, help="target threshold")
         self.parser.add_argument("--convegence_threshold", type=float,
-                                 default=0.001, help="convergence threshold")
+                                 default=0.0001, help="convergence threshold")
         self.parser.add_argument("--max_iteration", type=int,
                                  default=1000, help="number of iterations")
         self.parser.add_argument("--snapshot_interval", type=int,
                                  default=100, help="snapshot interval")
 
+
+        # Options for testing
 
     def parse(self):
         args = self.parser.parse_args()

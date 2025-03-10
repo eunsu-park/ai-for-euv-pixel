@@ -43,13 +43,15 @@ def train():
         epoch += 1
         model.scheduler.step()
 
-        print(f"===== Epoch {epoch} Complete =====")
-        print(f"Time: {time.time() - epoch_start_time:.2f}초")
+        print(f"===== Epoch {epoch} Finished =====")
+        print(f"Elapsed Time: {time.time() - epoch_start_time:.2f} sec")
         print(f"Loss: {np.mean(losses):.4f})")
         print(f"Metric: {np.mean(metrics):.4f}")
 
         if epoch % options.save_freq == 0 :
             model.save_networks(epoch)
+
+    print("Training Done")
 
 if __name__ == "__main__" :
     train()

@@ -7,8 +7,8 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 
-from networks import Calculator, Reconstructor
-from pipeline import TrainDataset, TestDataset
+from networks import Calculator, Reconstructor, Loss
+from pipeline import get_data
 from utils import save_options
 
 
@@ -28,42 +28,23 @@ class DINE:
         self.R = Reconstructor(factor).to(self.device).double()
         self.init_weights(self.C)
 
-        if options.loss_function == "mse" :
-            self.criterion = nn.MSELoss()
-        elif options.loss_function == "mae" :
-            self.criterion = nn.L1Loss()
-        else :
-            raise NotImplementedError(f"Loss function [{options.loss_function}] is not implemented")
+
+        self.criterion = Loss(options.loss_type)
         self.optimizer = optim.Adam(list(self.C.parameters()),
                                     lr=options.lr, betas=(options.beta1, options.beta2))
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=options.max_iteration // 4, gamma=0.5)
+        self.metric = Loss(options.metric_type)
 
-        if options.metric_function == "mse" :
-            self.metric = nn.MSELoss()
-        elif options.metric_function == "mae" :
-            self.metric = nn.L1Loss()
-        else :
-            raise NotImplementedError(f"Metric function [{options.metric_function}] is not implemented")
-
-        if options.phase == "train" :
-            self.dataset = TrainDataset(options.data_file_path,
-                                        options.waves,
-                                        options.max_iteration)
-            self.dataloader = torch.utils.data.DataLoader(self.dataset,
-                                                          batch_size=1,
-                                                          shuffle=True)
-        elif options.phase == "test" :
-            self.dataset = TestDataset(options.data_file_path,
-                                       options.waves)
-            self.dataloader = torch.utils.data.DataLoader(self.dataset,
-                                                          batch_size=1,
-                                                          shuffle=False)
+        self.data = get_data(options.data_file_path, options.waves).to(self.device).double()
 
         self.experiment_dir = f"{options.save_root}/{options.experiment_name}"
         self.snapshot_dir = f"{self.experiment_dir}/snapshot"
-        self.test_dir = f"{self.experiment_dir}/test"
         if not os.path.exists(self.snapshot_dir) :
             os.makedirs(self.snapshot_dir)
+        self.model_dir = f"{self.experiment_dir}/model"        
+        if not os.path.exists(self.model_dir) :
+            os.makedirs(self.model_dir)
+        self.test_dir = f"{self.experiment_dir}/test"
         if not os.path.exists(self.test_dir) :
             os.makedirs(self.test_dir)
         # save_options(options, f"{self.experiment_dir}/options.txt")
@@ -110,12 +91,21 @@ class DINE:
         self.optimizer.step()
         return loss.item(), metric.item()
 
-    def save_networks(self, iteration):
-        save_path = f"{self.experiment_dir}/model.pth"
+    def random_crop(self):
+        size = self.options.crop_size
+        x = np.random.choice(self.data.shape[-2] - size)
+        y = np.random.choice(self.data.shape[-1] - size)
+        return self.data[:, :, x:x+size, y:y+size]
+
+    def save_networks(self, iteration, save_latest=True):
+        if save_latest is True :
+            save_path = f"{self.experiment_dir}/latest.pth"
+        else :
+            save_path = f"{self.experiment_dir}/{iteration}.pth"
         torch.save({"calculator" : self.C.state_dict(),
                     "reconstructor" : self.R.state_dict(),
                     "optimizer" : self.optimizer.state_dict(),
-                    # "scheduler" : self.scheduler.state_dict(),
+                    "scheduler" : self.scheduler.state_dict(),
                     "iteration" : iteration
                     },
                     save_path)
@@ -126,7 +116,7 @@ class DINE:
         self.E.load_state_dict(checkpoint["encoder"])
         self.D.load_state_dict(checkpoint["decoder"])
         self.optimizer.load_state_dict(checkpoint["optimizer"])
-        # self.scheduler.load_state_dict(checkpoint["scheduler"])
+        self.scheduler.load_state_dict(checkpoint["scheduler"])
         print(f"Load model: {model_path}")
         return checkpoint.get("iteration", 0)
 

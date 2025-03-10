@@ -9,7 +9,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-from networks import Encoder, Decoder
+from networks import Encoder, Decoder, Loss
 from pipeline import TrainDataset, TestDataset
 from utils import save_options
 
@@ -31,21 +31,11 @@ class EPIC:
         self.init_weights(self.E, init_type=options.init_type)
         self.init_weights(self.D, init_type=options.init_type)
 
-        if options.loss_function == "mse" :
-            self.criterion = nn.MSELoss()
-        elif options.loss_function == "mae" :
-            self.criterion = nn.L1Loss()
-        else :
-            raise NotImplementedError(f"Loss function [{options.loss_function}] is not implemented")
+        self.criterion = Loss(options.loss_type)
         self.optimizer = optim.Adam(list(self.E.parameters()) + list(self.D.parameters()),
                                     lr=options.lr, betas=(options.beta1, options.beta2))
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=options.n_epochs // 4, gamma=0.5)
-        if options.metric_function == "mse" :
-            self.metric = nn.MSELoss()
-        elif options.metric_function == "mae" :
-            self.metric = nn.L1Loss()
-        else :
-            raise NotImplementedError(f"Metric function [{options.metric_function}] is not implemented")
+        self.metric = Loss(options.metric_type)
 
         if options.phase == "train" :
             self.dataset = TrainDataset(data_root=options.data_root, waves=options.waves)
@@ -62,12 +52,12 @@ class EPIC:
 
         self.experiment_dir = f"{options.save_root}/{options.experiment_name}"
         self.snapshot_dir = f"{self.experiment_dir}/snapshot"
-        self.model_dir = f"{self.experiment_dir}/model"
-        self.test_dir = f"{self.experiment_dir}/test"
         if not os.path.exists(self.snapshot_dir) :
             os.makedirs(self.snapshot_dir)
+        self.model_dir = f"{self.experiment_dir}/model"
         if not os.path.exists(self.model_dir) :
             os.makedirs(self.model_dir)
+        self.test_dir = f"{self.experiment_dir}/test"
         if not os.path.exists(self.test_dir) :
             os.makedirs(self.test_dir)
         # save_options(options, f"{self.experiment_dir}/options.txt")
@@ -144,19 +134,21 @@ class EPIC:
                 metrics.append(metric.item())
         print(f"Average Loss: {np.mean(losses):.4f}, Average Metric: {np.mean(metrics):.4f}")
 
-    def save_networks(self, epoch):
-        save_path = os.path.join(self.model_dir, f"{epoch}.pth")
+    def save_networks(self, epoch, save_latest=True):
+        if save_latest is True :
+            save_path = f"{self.experiment_dir}/latest.pth"
+        else :
+            save_path = f"{self.model_dir}/{epoch}.pth"
         torch.save({"encoder" : self.E.state_dict(),
                     "decoder" : self.D.state_dict(),
                     "optimizer" : self.optimizer.state_dict(),
                     "scheduler" : self.scheduler.state_dict(),
                     "epoch" : epoch
                     },
-                    save_path)
+                     save_path)
         print(f"Save model: {save_path}")
 
     def load_networks(self, model_path):
-        # load_path = os.path.join(self.model_dir, f"{epoch}.pth")
         checkpoint = torch.load(model_path)
         self.E.load_state_dict(checkpoint["encoder"])
         self.D.load_state_dict(checkpoint["decoder"])

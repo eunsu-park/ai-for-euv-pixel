@@ -24,7 +24,7 @@ class Options:
         self.parser.add_argument("--experiment_name", type=str,
                                  help="experiment name")        
         self.parser.add_argument("--model_type", type=str,
-                                 choices=["pixel", "convolution"],
+                                 choices=["pixel", "conv"],
                                  default="pixel", help="model type")
         self.parser.add_argument("--latent_output_type", type=str,
                                  choices=["sigmoid", "softmax"],
@@ -41,11 +41,11 @@ class Options:
                                  default="", help="model path")
 
         # Options for training
-        self.parser.add_argument("--loss_function", type=str,
-                                 choices=["mse", "mae"],
+        self.parser.add_argument("--loss_type", type=str,
+                                 choices=["mse", "mae", "log_cosh"],
                                  default="mse", help="loss function")
-        self.parser.add_argument("--metric_function", type=str,
-                                 choices=["mse", "mae"],
+        self.parser.add_argument("--metric_type", type=str,
+                                 choices=["mse", "mae", "log_cosh"],
                                  default="mae", help="metric function")
         self.parser.add_argument("--lr", type=float,
                                  default=0.0002, help="learning rate")

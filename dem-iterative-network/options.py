@@ -22,7 +22,7 @@ class Options:
         self.parser.add_argument("--experiment_name", type=str,
                                  help="experiment name")        
         self.parser.add_argument("--model_type", type=str,
-                                 choices=["pixel", "convolution"],
+                                 choices=["pixel", "conv"],
                                  default="pixel", help="model type")
         self.parser.add_argument("--waves", type=int, nargs="+",
                                  default=[94, 131, 171, 193, 211, 335],
@@ -40,11 +40,13 @@ class Options:
                                  default="", help="model path")
 
         # Options for training
-        self.parser.add_argument("--loss_function", type=str,
-                                 choices=["mse", "mae"],
+        self.parser.add_argument("--crop_size", type=int,
+                                 default=256, help="crop size")
+        self.parser.add_argument("--loss_type", type=str,
+                                 choices=["mse", "mae", "log_cosh"],
                                  default="mse", help="loss function")
-        self.parser.add_argument("--metric_function", type=str,
-                                 choices=["mse", "mae"],
+        self.parser.add_argument("--metric_type", type=str,
+                                 choices=["mse", "mae", "log_cosh"],
                                  default="mae", help="metric function")
         self.parser.add_argument("--lr", type=float,
                                  default=0.0002, help="learning rate")
@@ -57,7 +59,7 @@ class Options:
         self.parser.add_argument("--convegence_threshold", type=float,
                                  default=0.0001, help="convergence threshold")
         self.parser.add_argument("--max_iteration", type=int,
-                                 default=1000, help="number of iterations")
+                                 default=4000, help="number of iterations")
         self.parser.add_argument("--snapshot_interval", type=int,
                                  default=100, help="snapshot interval")
 

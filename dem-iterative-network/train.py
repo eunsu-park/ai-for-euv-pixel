@@ -17,16 +17,19 @@ def train():
     if options.model_path != '' :
         start_iteration = model.load_networks(options.model_path)
 
-    start_time = time.time()
 
+    start_time = time.time()
     losses = []
     metrics = []
     losses_last_10 = []
     metrics_last_10 = []
-    iteration = start_iteration
-    for i, data in enumerate(model.dataloader):
+
+    iteration = 0
+    while iteration < options.max_iteration :
+        data = model.random_crop()
         loss, metric = model.train_step(data)
         iteration += 1
+        model.scheduler.step()
         losses.append(loss)
         losses_last_10.append(loss)
         metrics.append(metric)
@@ -45,12 +48,22 @@ def train():
         if iteration % options.snapshot_interval == 0 :
             model.save_snapshot(data, iteration)
 
-        # if np.mean(losses_last_10) < options.eps :
-        #     print(f"Converged at iteration {i+start_iteration}")
-            # break
+        if mean_loss < options.convegence_threshold :
+            print(f"Converged at iteration {iteration}")
+            break
 
     end_time = time.time()
+    model.save_networks(iteration, save_latest=True)
+
+    print(f"===== Train Finished =====")
     print(f"Elapsed time: {end_time - start_time:.2f} sec")
+    print(f"Total iteration: {iteration}")
+    print(f"Final loss: {loss:.4f}")
+    print(f"Final metric: {metric:.4f}")
+
+
+    
+
 
     #     model.set_input(data)
 

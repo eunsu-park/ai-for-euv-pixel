@@ -164,8 +164,8 @@ class Loss(nn.Module):
         else :
             raise NotImplementedError(f"Network type {network_type} is not implemented")
 
-    def forward(self, y_pred, y):
-        return self.criterion(y_pred, y)
+    def forward(self, y_pred, y, mu=None, logvar=None):
+        return self.criterion(y_pred, y, mu, logvar)
 
 
 class Metric(nn.Module):

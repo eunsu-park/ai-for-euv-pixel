@@ -129,7 +129,7 @@ class EPIC:
                 data = data.cpu().detach().numpy()
                 latent = latent.cpu().detach().numpy()
                 recon = recon.cpu().detach().numpy()
-                if self.options.network_type == "variationa_autoencoder" :
+                if self.options.network_type == "variational_autoencoder" :
                     mu = mu.cpu().detach().numpy()
                     logvar = logvar.cpu().detach().numpy()
                 for i in range(len(file_path)) :
@@ -139,7 +139,7 @@ class EPIC:
                         f.create_dataset("data", data=data[i])
                         f.create_dataset("latent", data=latent[i])
                         f.create_dataset("recon", data=recon[i])
-                        if self.options.network_type == "variationa_autoencoder" :
+                        if self.options.network_type == "variational_autoencoder" :
                             f.create_dataset("mu", data=mu[i])
                             f.create_dataset("logvar", data=logvar[i])
                 print(f"Test [{i}/{len(self.dataloader)}] Loss: {loss:.4f}, Metric: {metric:.4f}")

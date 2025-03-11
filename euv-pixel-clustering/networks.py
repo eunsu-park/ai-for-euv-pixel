@@ -195,7 +195,7 @@ if __name__ == "__main__" :
 
     if network_type == "autoencoder":
         model = AutoEncoder(num_euv_channels, num_latent_features, layer_type)
-    elif network_type == "vae":
+    elif network_type == "variable_autoencoder":
         model = VariationalAutoEncoder(num_euv_channels, num_latent_features, layer_type)
     
 

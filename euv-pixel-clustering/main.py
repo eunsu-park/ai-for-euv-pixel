@@ -9,7 +9,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-from networks import Encoder, Decoder, Loss, AutoEncoder, VariationalAutoEncoder
+from networks import AutoEncoder, VariationalAutoEncoder, Loss, Metric
 from pipeline import TrainDataset, TestDataset
 from utils import save_options
 
@@ -37,7 +37,7 @@ class EPIC:
         self.optimizer = optim.Adam(self.network.parameters(),
                                     lr=options.lr, betas=(options.beta1, options.beta2))
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=options.n_epochs // 4, gamma=0.5)
-        self.metric = Loss(options.metric_type)
+        self.metric = Metric(options.metric_type)
 
         if options.phase == "train" :
             self.dataset = TrainDataset(data_root=options.data_root, waves=options.waves)

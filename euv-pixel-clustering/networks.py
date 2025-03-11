@@ -161,6 +161,8 @@ class Loss(nn.Module):
             self.criterion = nn.MSELoss()
         elif network_type == "variational_autoencoder" :
             self.criterion = vae_loss
+        else :
+            raise NotImplementedError(f"Network type {network_type} is not implemented")
 
     def forward(self, y_pred, y):
         return self.criterion(y_pred, y)

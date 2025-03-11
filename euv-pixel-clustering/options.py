@@ -23,12 +23,12 @@ class Options:
                                  default=4, help="number of workers")
         self.parser.add_argument("--experiment_name", type=str,
                                  help="experiment name")        
-        self.parser.add_argument("--model_type", type=str,
+        self.parser.add_argument("--network_type", type=str,
+                                 choices=["ae", "vae"],
+                                 default="ae", help="network type")
+        self.parser.add_argument("--layer_type", type=str,
                                  choices=["pixel", "conv"],
-                                 default="pixel", help="model type")
-        self.parser.add_argument("--latent_output_type", type=str,
-                                 choices=["sigmoid", "softmax"],
-                                 default=None, help="latent output type")
+                                 default="pixel", help="layer type")
         self.parser.add_argument("--waves", type=int, nargs="+",
                                  default=[94, 131, 171, 193, 211, 335],
                                  help="wavelengths")
@@ -41,9 +41,6 @@ class Options:
                                  default="", help="model path")
 
         # Options for training
-        self.parser.add_argument("--loss_type", type=str,
-                                 choices=["mse", "mae", "log_cosh"],
-                                 default="mse", help="loss function")
         self.parser.add_argument("--metric_type", type=str,
                                  choices=["mse", "mae", "log_cosh"],
                                  default="mae", help="metric function")

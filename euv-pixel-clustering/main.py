@@ -9,7 +9,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-from networks import Encoder, Decoder, Loss
+from networks import Encoder, Decoder, Loss, AutoEncoder, VariationalAutoEncoder
 from pipeline import TrainDataset, TestDataset
 from utils import save_options
 
@@ -18,21 +18,23 @@ class EPIC:
     def __init__(self, options):
         self.options = options
         self.device = options.device
+        self.network_type = options.network_type
 
-        self.E = Encoder(num_euv_channels=options.num_euv_channels,
-                         num_latent_features=options.num_latent_features,
-                         model_type=options.model_type,
-                         latent_output_type=options.latent_output_type
-                        ).to(self.device)
-        self.D = Decoder(num_euv_channels=options.num_euv_channels,
-                         num_latent_features=options.num_latent_features,
-                         model_type=options.model_type
-                        ).to(self.device)
-        self.init_weights(self.E, init_type=options.init_type)
-        self.init_weights(self.D, init_type=options.init_type)
+        if self.network_type == "autoencoder" :
+            self.network = AutoEncoder(num_euv_channels=options.num_euv_channels,
+                                       num_latent_features=options.num_latent_features,
+                                       layer_type=options.layer_type
+                                       ).to(self.device)
+        elif self.network_type == "variational_autoencoder" :
+            self.network = VariationalAutoEncoder(num_euv_channels=options.num_euv_channels,
+                                                  num_latent_features=options.num_latent_features,
+                                                  layer_type=options.layer_type
+                                                  ).to(self.device)
 
-        self.criterion = Loss(options.loss_type)
-        self.optimizer = optim.Adam(list(self.E.parameters()) + list(self.D.parameters()),
+        self.init_weights(self.network, init_type=options.init_type)
+
+        self.criterion = Loss(self.network_type)
+        self.optimizer = optim.Adam(self.network.parameters(),
                                     lr=options.lr, betas=(options.beta1, options.beta2))
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=options.n_epochs // 4, gamma=0.5)
         self.metric = Loss(options.metric_type)
@@ -92,43 +94,51 @@ class EPIC:
                     param.requires_grad = requires_grad
 
     def train_step(self, data):
-        self.E.train()
-        self.D.train()
+        self.network.train()
         self.optimizer.zero_grad()
         data = data.to(self.device)
-        z = self.E(data)
-        recon = self.D(z)
-        loss = self.criterion(recon, data)
+        if self.network_type == "autoencoder" :
+            recon, _ = self.network(data)
+            loss = self.criterion(recon, data)
+        elif self.network_type == "variational_autoencoder" :
+            recon, _, mu, logvar = self.network(data)
+            loss = self.criterion(recon, data, mu, logvar)
         metric = self.metric(recon, data)
         loss.backward()
         self.optimizer.step()
         return loss.item(), metric.item()
     
     def test(self):
-        self.E.eval()
-        self.D.eval()
+        self.network.eval()
         losses = []
         metrics = []
         with torch.no_grad():
             for i, data_dict in enumerate(self.dataloader):
                 data = data_dict["data"].to(self.device)
                 file_path = data_dict["file_path"]
-                z = self.E(data)
-                recon = self.D(z)
-                loss = self.criterion(recon, data)
+                if self.network_type == "autoencoder" :
+                    recon, latent = self.network(data)
+                    loss = self.criterion(recon, data)
+                elif self.network_type == "variational_autoencoder" :
+                    recon, z, mu, logvar = self.network(data)
+                    loss = self.criterion(recon, data, mu, logvar)
                 metric = self.metric(recon, data)
-
                 data = data.cpu().detach().numpy()
-                z = z.cpu().detach().numpy()
+                latent = z.cpu().detach().numpy()
                 recon = recon.cpu().detach().numpy()
-
+                if self.options.network_type == "variationa_autoencoder" :
+                    mu = mu.cpu().detach().numpy()
+                    logvar = logvar.cpu().detach().numpy()
                 for i in range(len(file_path)) :
                     file_name = os.path.basename(file_path[i])
                     save_path = f"{self.test_dir}/{file_name}"
                     with h5py.File(save_path, "w") as f:
                         f.create_dataset("data", data=data[i])
-                        f.create_dataset("z", data=z[i])
+                        f.create_dataset("latent", data=latent[i])
                         f.create_dataset("recon", data=recon[i])
+                        if self.options.network_type == "variationa_autoencoder" :
+                            f.create_dataset("mu", data=mu[i])
+                            f.create_dataset("logvar", data=logvar[i])
                 print(f"Test [{i}/{len(self.dataloader)}] Loss: {loss:.4f}, Metric: {metric:.4f}")
                 losses.append(loss.item())
                 metrics.append(metric.item())
@@ -139,8 +149,7 @@ class EPIC:
             save_path = f"{self.experiment_dir}/latest.pth"
         else :
             save_path = f"{self.model_dir}/{epoch}.pth"
-        torch.save({"encoder" : self.E.state_dict(),
-                    "decoder" : self.D.state_dict(),
+        torch.save({"network" : self.network.state_dict(),
                     "optimizer" : self.optimizer.state_dict(),
                     "scheduler" : self.scheduler.state_dict(),
                     "epoch" : epoch
@@ -150,8 +159,7 @@ class EPIC:
 
     def load_networks(self, model_path):
         checkpoint = torch.load(model_path)
-        self.E.load_state_dict(checkpoint["encoder"])
-        self.D.load_state_dict(checkpoint["decoder"])
+        self.network.load_state_dict(checkpoint["network"])
         self.optimizer.load_state_dict(checkpoint["optimizer"])
         self.scheduler.load_state_dict(checkpoint["scheduler"])
         print(f"Load model: {model_path}")
@@ -159,15 +167,19 @@ class EPIC:
 
     def save_snapshot(self, data, epoch, iteration):
         save_path = f"{self.snapshot_dir}/{epoch:04d}_{iteration:07d}"
-        self.E.eval()
-        self.D.eval()
+        self.network.eval()
         with torch.no_grad():
             data = data.to(self.device)
-            z = self.E(data)
-            recon = self.D(z)
+            if self.network_type == "autoencoder" :
+                recon, latent = self.network(data)
+            elif self.network_type == "variational_autoencoder" :
+                recon, latent, mu, logvar = self.network(data)
         data = data.cpu().detach().numpy()[0]
-        z = z.cpu().detach().numpy()[0]
+        latent = latent.cpu().detach().numpy()[0]
         recon = recon.cpu().detach().numpy()[0]
+        if self.network_type == "variational_autoencoder" :
+            mu = mu.cpu().detach().numpy()[0]
+            logvar = logvar.cpu().detach().numpy()[0]
 
         fig, ax = plt.subplots(2, self.options.num_euv_channels, figsize=(4*self.options.num_euv_channels, 8))
         for i in range(self.options.num_euv_channels):
@@ -182,5 +194,8 @@ class EPIC:
 
         with h5py.File(f"{save_path}.h5", "w") as f:
             f.create_dataset("data", data=data)
-            f.create_dataset("z", data=z)
+            f.create_dataset("latent", data=latent)
             f.create_dataset("recon", data=recon)
+            if self.network_type == "variational_autoencoder" :
+                f.create_dataset("mu", data=mu)
+                f.create_dataset("logvar", data=logvar)

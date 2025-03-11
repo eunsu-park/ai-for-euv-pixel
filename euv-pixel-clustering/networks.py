@@ -1,30 +1,26 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class Encoder(nn.Module):
-    def __init__(self, num_euv_channels, num_latent_features, model_type="pixel", latent_output_type="sigmoid"):
+    def __init__(self, num_euv_channels, num_latent_features, layer_type="pixel"):
         super(Encoder, self).__init__()
         self.num_euv_channels = num_euv_channels
         self.num_latent_features = num_latent_features
-        self.model_type = model_type
-        self.latent_output_type = latent_output_type
+        self.layer_type = layer_type
         self.build()
         print(self)
         print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
 
     def build(self):
-        if self.model_type == "pixel":
+        if self.layer_type == "pixel":
             kernel_size, stride, padding = 1, 1, 0
-        elif self.model_type == "conv":
+        elif self.layer_type == "conv":
             kernel_size, stride, padding = 3, 1, 1
         model = []
         model += [nn.Conv2d(self.num_euv_channels, 1024, kernel_size, stride, padding), nn.SiLU()]
         model += [nn.Conv2d(1024, self.num_latent_features, kernel_size, stride, padding)]
-        if self.latent_output_type == "sigmoid":
-            model += [nn.Sigmoid()]
-        elif self.latent_output_type == "softmax":
-            model += [nn.Softmax(dim=1)]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
@@ -32,19 +28,19 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, num_euv_channels, num_latent_features, model_type="pixel"):
+    def __init__(self, num_euv_channels, num_latent_features, layer_type="pixel"):
         super(Decoder, self).__init__()
         self.num_euv_channels = num_euv_channels
         self.num_latent_features = num_latent_features
-        self.model_type = model_type
+        self.layer_type = layer_type
         self.build()
         print(self)
         print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
 
     def build(self):
-        if self.model_type == "pixel":
+        if self.layer_type == "pixel":
             kernel_size, stride, padding = 1, 1, 0
-        elif self.model_type == "convolution":
+        elif self.layer_type == "convolution":
             kernel_size, stride, padding = 3, 1, 1
         model = []
         model += [nn.Conv2d(self.num_latent_features, 1024, kernel_size, stride, padding), nn.SiLU()]
@@ -53,6 +49,82 @@ class Decoder(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+
+
+class AutoEncoder(nn.Module):
+    def __init__(self, num_euv_channels, num_latent_features, layer_type="pixel"):
+        super(AutoEncoder, self).__init__()
+        self.num_euv_channels = num_euv_channels
+        self.num_latent_features = num_latent_features
+        self.layer_type = layer_type
+        self.build()
+        print(self)
+        print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
+
+    def build(self):
+        if self.layer_type == "pixel":
+            kernel_size, stride, padding = 1, 1, 0
+        elif self.layer_type == "convolution":
+            kernel_size, stride, padding = 3, 1, 1
+
+        encoder = []
+        encoder += [nn.Conv2d(self.num_euv_channels, 1024, kernel_size, stride, padding), nn.SiLU()]
+        encoder += [nn.Conv2d(1024, self.num_latent_features, kernel_size, stride, padding)]
+        self.encoder = nn.Sequential(*encoder)
+
+        decoder = []
+        decoder += [nn.Conv2d(self.num_latent_features, 1024, kernel_size, stride, padding), nn.SiLU()]
+        decoder += [nn.Conv2d(1024, self.num_euv_channels, kernel_size, stride, padding)]
+        self.decoder = nn.Sequential(*decoder)
+
+    def forward(self, x):
+        latent = self.encoder(x)
+        x_recon = self.decoder(latent)
+        return x_recon, latent
+
+
+class VariationalAutoEncoder(nn.Module):
+    def __init__(self, num_euv_channels, num_latent_features, layer_type="pixel"):
+        super(VariationalAutoEncoder, self).__init__()
+        self.num_euv_channels = num_euv_channels
+        self.num_latent_features = num_latent_features
+        self.layer_type = layer_type
+
+        if self.layer_type == "pixel":
+            kernel_size, stride, padding = 1, 1, 0
+        elif self.layer_type == "convolution":
+            kernel_size, stride, padding = 3, 1, 1
+
+        self.conv1 = nn.Conv2d(self.num_euv_channels, 1024, kernel_size, stride, padding)
+        self.conv2_mu = nn.Conv2d(1024, num_latent_features, kernel_size, stride, padding)
+        self.conv2_logvar = nn.Conv2d(1024, num_latent_features, kernel_size, stride, padding)
+        self.conv3 = nn.Conv2d(num_latent_features, 1024, kernel_size, stride, padding)
+        self.conv4 = nn.Conv2d(1024, self.num_euv_channels, kernel_size, stride, padding)
+        self.act = nn.SiLU()
+
+    def encode(self, x):
+        h = self.conv1(x)
+        h = self.act(h)
+        mu = self.conv2_mu(h)
+        logvar = self.conv2_logvar(h)
+        return mu, logvar
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + eps * std
+
+    def decode(self, latent):
+        h = self.conv3(latent)
+        h = self.act(h)
+        h = self.conv4(h)
+        return h
+    
+    def forward(self, x):
+        mu, logvar = self.encode(x)
+        latent = self.reparameterize(mu, logvar)
+        x_recon = self.decode(latent)
+        return x_recon, latent, mu, logvar
 
 
 def log_cosh_loss(y_pred, y):
@@ -75,40 +147,59 @@ def r2_score(y_pred, y):
     return 1 - (ss_residual / ss_total)
 
 
+def vae_loss(recon_x, x, mu, logvar):
+    recon_loss = nn.MSELoss()(recon_x, x)
+    kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+    return recon_loss + kl_div
+
+
 class Loss(nn.Module):
-    def __init__(self, loss_type):
+    def __init__(self, network_type):
         super(Loss, self).__init__()
 
-        if loss_type == "mse":
+        if network_type == "autoencoder" :
             self.criterion = nn.MSELoss()
-        elif loss_type == "mae":
-            self.criterion = nn.L1Loss()
-        elif loss_type == "log_cosh":
-            self.criterion = log_cosh_loss
-        else:
-            raise NotImplementedError(f"Loss function [{loss_type}] is not implemented")
+        elif network_type == "variational_autoencoder" :
+            self.criterion = vae_loss
 
     def forward(self, y_pred, y):
         return self.criterion(y_pred, y)
-    
+
+
+class Metric(nn.Module):
+    def __init__(self, metric_type):
+        super(Metric, self).__init__()
+
+        if metric_type == "mse" :
+            self.metric = nn.MSELoss()
+        elif metric_type == "mae" :
+            self.metric = nn.L1Loss()
+        elif metric_type == "log_cosh" :
+            self.metric = log_cosh_loss
+        else :
+            raise NotImplementedError(f"Metric type {metric_type} is not implemented")
+
+    def forward(self, y_pred, y):
+        return self.metric(y_pred, y)
+
 
 if __name__ == "__main__" :
 
     from options import Options
     options = Options().parse()
 
-    E = Encoder(num_euv_channels=options.num_euv_channels,
-                num_latent_features=options.num_latent_features,
-                model_type=options.model_type).to(options.device)
-    D = Decoder(num_euv_channels=options.num_euv_channels,
-                num_latent_features=options.num_latent_features,
-                model_type=options.model_type).to(options.device)
+    num_euv_channels = options.num_euv_channels
+    num_latent_features = options.num_latent_features
+    network_type = options.network_type
+    layer_type = options.layer_type
 
-    inp = torch.randn(options.batch_size,
-                      options.num_euv_channels,
-                      256, 256).to(options.device)
-    print(inp.size())
-    out = E(inp)
-    print(out.size())
-    out = D(out)
-    print(out.size())
+    if network_type == "autoencoder":
+        model = AutoEncoder(num_euv_channels, num_latent_features, layer_type)
+    elif network_type == "vae":
+        model = VariationalAutoEncoder(num_euv_channels, num_latent_features, layer_type)
+    
+
+    inp = torch.randn(1, num_euv_channels, 1024, 1024)
+    out = model(inp)
+    for o in out:
+        print(o.shape)

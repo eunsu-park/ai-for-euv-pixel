@@ -22,16 +22,18 @@ class EPIC:
         self.network_type = options.network_type
 
         if self.network_type == "autoencoder" :
-            self.network = AutoEncoder(num_euv_channels=options.num_euv_channels,
-                                       num_latent_features=options.num_latent_features,
-                                       layer_type=options.layer_type
-                                       ).to(self.device)
+            self.network = AutoEncoder(
+                num_euv_channels=options.num_euv_channels,
+                num_hidden_features=options.num_hidden_features,
+                num_latent_features=options.num_latent_features,
+                layer_type=options.layer_type).to(self.device)
             self.criterion = AutoEncoderLoss()
         elif self.network_type == "variational_autoencoder" :
-            self.network = VariationalAutoEncoder(num_euv_channels=options.num_euv_channels,
-                                                  num_latent_features=options.num_latent_features,
-                                                  layer_type=options.layer_type
-                                                  ).to(self.device)
+            self.network = VariationalAutoEncoder(
+                num_euv_channels=options.num_euv_channels,
+                num_hidden_features=options.num_hidden_features,
+                num_latent_features=options.num_latent_features,
+                layer_type=options.layer_type).to(self.device)
             self.criterion = VariationalAutoEncoderLoss()
 
         self.init_weights(self.network, init_type=options.init_type)

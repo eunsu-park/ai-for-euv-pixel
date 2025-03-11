@@ -52,9 +52,10 @@ class Decoder(nn.Module):
 
 
 class AutoEncoder(nn.Module):
-    def __init__(self, num_euv_channels, num_latent_features, layer_type="pixel"):
+    def __init__(self, num_euv_channels, num_hidden_features, num_latent_features, layer_type="pixel"):
         super(AutoEncoder, self).__init__()
         self.num_euv_channels = num_euv_channels
+        self.num_hidden_features = num_hidden_features
         self.num_latent_features = num_latent_features
         self.layer_type = layer_type
 
@@ -62,9 +63,9 @@ class AutoEncoder(nn.Module):
             kernel_size, stride, padding = 1, 1, 0
         elif self.layer_type == "convolution":
             kernel_size, stride, padding = 3, 1, 1
-        self.conv1 = nn.Conv2d(self.num_euv_channels, 128, kernel_size, stride, padding)
+        self.conv1 = nn.Conv2d(self.num_euv_channels, self.num_hiden_features, kernel_size, stride, padding)
         self.conv2 = nn.Conv2d(128, self.num_latent_features, kernel_size, stride, padding)
-        self.conv3 = nn.Conv2d(self.num_latent_features, 128, kernel_size, stride, padding)
+        self.conv3 = nn.Conv2d(self.num_latent_features, self.num_hiden_features, kernel_size, stride, padding)
         self.conv4 = nn.Conv2d(128, self.num_euv_channels, kernel_size, stride, padding)
         self.act = nn.SiLU()
 
@@ -84,9 +85,10 @@ class AutoEncoder(nn.Module):
 
 
 class VariationalAutoEncoder(nn.Module):
-    def __init__(self, num_euv_channels, num_latent_features, layer_type="pixel"):
+    def __init__(self, num_euv_channels, num_hiden_features, num_latent_features, layer_type="pixel"):
         super(VariationalAutoEncoder, self).__init__()
         self.num_euv_channels = num_euv_channels
+        self.num_latent_features = num_latent_features
         self.num_latent_features = num_latent_features
         self.layer_type = layer_type
 
@@ -94,10 +96,10 @@ class VariationalAutoEncoder(nn.Module):
             kernel_size, stride, padding = 1, 1, 0
         elif self.layer_type == "convolution":
             kernel_size, stride, padding = 3, 1, 1
-        self.conv1 = nn.Conv2d(self.num_euv_channels, 128, kernel_size, stride, padding)
+        self.conv1 = nn.Conv2d(self.num_euv_channels, self.num_hiden_features, kernel_size, stride, padding)
         self.conv2_mu = nn.Conv2d(128, num_latent_features, kernel_size, stride, padding)
         self.conv2_logvar = nn.Conv2d(128, num_latent_features, kernel_size, stride, padding)
-        self.conv3 = nn.Conv2d(num_latent_features, 128, kernel_size, stride, padding)
+        self.conv3 = nn.Conv2d(num_latent_features, self.num_hiden_features, kernel_size, stride, padding)
         self.conv4 = nn.Conv2d(128, self.num_euv_channels, kernel_size, stride, padding)
         self.act = nn.SiLU()
 

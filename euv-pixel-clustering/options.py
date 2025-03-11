@@ -34,6 +34,8 @@ class Options:
                                  help="wavelengths")
         self.parser.add_argument("--num_latent_features", type=int,
                                  default=50, help="number of latent features")
+        self.parser.add_argument("--num_hidden_features", type=int,
+                                 default=50, help="number of latent features")
         self.parser.add_argument("--init_type", type=str,
                                  choices=["normal", "xavier", "kaiming", "orthogonal"],
                                  default="normal", help="initialization type")

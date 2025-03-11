@@ -1,5 +1,5 @@
 
-python networks.py \
+nohup python networks.py \
     --data_root $HOME/Dataset/pixel \
     --save_root $HOME/Result/epic \
     --experiment_name ae_pixel_high \
@@ -7,8 +7,9 @@ python networks.py \
     --layer_type pixel \
     --num_latent_features 2 \
     --device cuda \
+    & \
 
-python networks.py \
+nohup python networks.py \
     --data_root $HOME/Dataset/pixel \
     --save_root $HOME/Result/epic \
     --experiment_name ae_pixel_high \
@@ -16,3 +17,4 @@ python networks.py \
     --layer_type pixel \
     --num_latent_features 2 \
     --device cuda \
+    & \

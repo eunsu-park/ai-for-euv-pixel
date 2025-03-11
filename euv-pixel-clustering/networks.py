@@ -68,13 +68,13 @@ class AutoEncoder(nn.Module):
             kernel_size, stride, padding = 3, 1, 1
 
         encoder = []
-        encoder += [nn.Conv2d(self.num_euv_channels, 1024, kernel_size, stride, padding), nn.SiLU()]
-        encoder += [nn.Conv2d(1024, self.num_latent_features, kernel_size, stride, padding)]
+        encoder += [nn.Conv2d(self.num_euv_channels, 128, kernel_size, stride, padding), nn.SiLU()]
+        encoder += [nn.Conv2d(128, self.num_latent_features, kernel_size, stride, padding)]
         self.encoder = nn.Sequential(*encoder)
 
         decoder = []
-        decoder += [nn.Conv2d(self.num_latent_features, 1024, kernel_size, stride, padding), nn.SiLU()]
-        decoder += [nn.Conv2d(1024, self.num_euv_channels, kernel_size, stride, padding)]
+        decoder += [nn.Conv2d(self.num_latent_features, 128, kernel_size, stride, padding), nn.SiLU()]
+        decoder += [nn.Conv2d(128, self.num_euv_channels, kernel_size, stride, padding)]
         self.decoder = nn.Sequential(*decoder)
 
     def forward(self, x):
@@ -95,19 +95,16 @@ class VariationalAutoEncoder(nn.Module):
         elif self.layer_type == "convolution":
             kernel_size, stride, padding = 3, 1, 1
 
-        self.conv1 = nn.Conv2d(self.num_euv_channels, 1024, kernel_size, stride, padding)
-        self.conv2_mu = nn.Conv2d(1024, num_latent_features, kernel_size, stride, padding)
-        self.conv2_logvar = nn.Conv2d(1024, num_latent_features, kernel_size, stride, padding)
-        self.conv3 = nn.Conv2d(num_latent_features, 1024, kernel_size, stride, padding)
-        self.conv4 = nn.Conv2d(1024, self.num_euv_channels, kernel_size, stride, padding)
+        self.conv1 = nn.Conv2d(self.num_euv_channels, 128, kernel_size, stride, padding)
+        self.conv2_mu = nn.Conv2d(128, num_latent_features, kernel_size, stride, padding)
+        self.conv2_logvar = nn.Conv2d(128, num_latent_features, kernel_size, stride, padding)
+        self.conv3 = nn.Conv2d(num_latent_features, 128, kernel_size, stride, padding)
+        self.conv4 = nn.Conv2d(128, self.num_euv_channels, kernel_size, stride, padding)
         self.act = nn.SiLU()
 
     def encode(self, x):
-        h = self.conv1(x)
-        h = self.act(h)
-        mu = self.conv2_mu(h)
-        logvar = self.conv2_logvar(h)
-        return mu, logvar
+        h = self.act(self.conv1(x))
+        return self.conv2_mu(h), self.conv2_logvar(h)
 
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
@@ -115,16 +112,13 @@ class VariationalAutoEncoder(nn.Module):
         return mu + eps * std
 
     def decode(self, latent):
-        h = self.conv3(latent)
-        h = self.act(h)
-        h = self.conv4(h)
-        return h
+        h = self.act(self.conv3(latent))
+        return self.conv4(h)
     
     def forward(self, x):
         mu, logvar = self.encode(x)
         latent = self.reparameterize(mu, logvar)
-        x_recon = self.decode(latent)
-        return x_recon, latent, mu, logvar
+        return self.decode(latent), latent, mu, logvar
 
 
 def log_cosh_loss(y_pred, y):

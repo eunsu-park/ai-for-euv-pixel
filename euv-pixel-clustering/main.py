@@ -9,7 +9,8 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-from networks import AutoEncoder, VariationalAutoEncoder, Loss, Metric
+from networks import AutoEncoder, VariationalAutoEncoder
+from networks import AutoEncoderLoss, VariationalAutoEncoderLoss, Metric
 from pipeline import TrainDataset, TestDataset
 from utils import save_options
 
@@ -25,15 +26,15 @@ class EPIC:
                                        num_latent_features=options.num_latent_features,
                                        layer_type=options.layer_type
                                        ).to(self.device)
+            self.criterion = AutoEncoderLoss()
         elif self.network_type == "variational_autoencoder" :
             self.network = VariationalAutoEncoder(num_euv_channels=options.num_euv_channels,
                                                   num_latent_features=options.num_latent_features,
                                                   layer_type=options.layer_type
                                                   ).to(self.device)
+            self.criterion = VariationalAutoEncoderLoss()
 
         self.init_weights(self.network, init_type=options.init_type)
-
-        self.criterion = Loss(self.network_type)
         self.optimizer = optim.Adam(self.network.parameters(),
                                     lr=options.lr, betas=(options.beta1, options.beta2))
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=options.n_epochs // 4, gamma=0.5)
@@ -120,11 +121,11 @@ class EPIC:
                     recon, latent = self.network(data)
                     loss = self.criterion(recon, data)
                 elif self.network_type == "variational_autoencoder" :
-                    recon, z, mu, logvar = self.network(data)
+                    recon, latent, mu, logvar = self.network(data)
                     loss = self.criterion(recon, data, mu, logvar)
                 metric = self.metric(recon, data)
                 data = data.cpu().detach().numpy()
-                latent = z.cpu().detach().numpy()
+                latent = latent.cpu().detach().numpy()
                 recon = recon.cpu().detach().numpy()
                 if self.options.network_type == "variationa_autoencoder" :
                     mu = mu.cpu().detach().numpy()

@@ -147,28 +147,24 @@ def r2_score(y_pred, y):
     return 1 - (ss_residual / ss_total)
 
 
-def vae_loss(recon_x, x, mu, logvar):
-    recon_loss = nn.MSELoss()(recon_x, x)
-    kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-    return recon_loss + kl_div
+class AutoEncoderLoss(nn.Module):
+    def __init__(self):
+        super(AutoEncoderLoss, self).__init__()
+        self.criterion = nn.MSELoss()
+    
+    def forward(self, x_recon, x):
+        return self.criterion(x_recon, x)
+    
 
+class VariationalAutoEncoderLoss(nn.Module):
+    def __init__(self):
+        super(VariationalAutoEncoderLoss, self).__init__()
+        self.criterion = nn.MSELoss()
 
-class Loss(nn.Module):
-    def __init__(self, network_type):
-        super(Loss, self).__init__()
-        self.network_type = network_type
-        if self.network_type == "autoencoder" :
-            self.criterion = nn.MSELoss()
-        elif self.network_type == "variational_autoencoder" :
-            self.criterion = vae_loss
-        else :
-            raise NotImplementedError(f"Network type {network_type} is not implemented")
-
-    def forward(self, y_pred, y, mu=None, logvar=None):
-        if self.network_type == "autoencoder" :
-            return self.criterion(y_pred, y)
-        elif self.network_type == "variational_autoencoder" :
-            return self.criterion(y_pred, y, mu, logvar)
+    def forward(self, x_recon, x, mu, logvar):
+        recon_loss = self.criterion(x_recon, x)
+        kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+        return recon_loss + kl_div
 
 
 class Metric(nn.Module):
@@ -184,8 +180,8 @@ class Metric(nn.Module):
         else :
             raise NotImplementedError(f"Metric type {metric_type} is not implemented")
 
-    def forward(self, y_pred, y):
-        return self.metric(y_pred, y)
+    def forward(self, x_recon, x):
+        return self.metric(x_recon, x)
 
 
 if __name__ == "__main__" :

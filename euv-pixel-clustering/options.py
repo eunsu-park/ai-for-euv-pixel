@@ -24,8 +24,8 @@ class Options:
         self.parser.add_argument("--experiment_name", type=str,
                                  help="experiment name")        
         self.parser.add_argument("--network_type", type=str,
-                                 choices=["ae", "vae"],
-                                 default="ae", help="network type")
+                                 choices=["autoencoder", "variational_autoencoder"],
+                                 default="autoencoder", help="network type")
         self.parser.add_argument("--layer_type", type=str,
                                  choices=["pixel", "conv"],
                                  default="pixel", help="layer type")

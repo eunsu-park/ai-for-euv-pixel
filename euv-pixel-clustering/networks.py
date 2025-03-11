@@ -64,9 +64,9 @@ class AutoEncoder(nn.Module):
         elif self.layer_type == "convolution":
             kernel_size, stride, padding = 3, 1, 1
         self.conv1 = nn.Conv2d(self.num_euv_channels, self.num_hidden_features, kernel_size, stride, padding)
-        self.conv2 = nn.Conv2d(128, self.num_latent_features, kernel_size, stride, padding)
+        self.conv2 = nn.Conv2d(self.num_hidden_features, self.num_latent_features, kernel_size, stride, padding)
         self.conv3 = nn.Conv2d(self.num_latent_features, self.num_hidden_features, kernel_size, stride, padding)
-        self.conv4 = nn.Conv2d(128, self.num_euv_channels, kernel_size, stride, padding)
+        self.conv4 = nn.Conv2d(self.num_hidden_features, self.num_euv_channels, kernel_size, stride, padding)
         self.act = nn.SiLU()
 
         print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
@@ -88,7 +88,7 @@ class VariationalAutoEncoder(nn.Module):
     def __init__(self, num_euv_channels, num_hidden_features, num_latent_features, layer_type="pixel"):
         super(VariationalAutoEncoder, self).__init__()
         self.num_euv_channels = num_euv_channels
-        self.num_latent_features = num_latent_features
+        self.num_hidden_features = num_hidden_features
         self.num_latent_features = num_latent_features
         self.layer_type = layer_type
 
@@ -97,10 +97,10 @@ class VariationalAutoEncoder(nn.Module):
         elif self.layer_type == "convolution":
             kernel_size, stride, padding = 3, 1, 1
         self.conv1 = nn.Conv2d(self.num_euv_channels, self.num_hidden_features, kernel_size, stride, padding)
-        self.conv2_mu = nn.Conv2d(128, num_latent_features, kernel_size, stride, padding)
-        self.conv2_logvar = nn.Conv2d(128, num_latent_features, kernel_size, stride, padding)
+        self.conv2_mu = nn.Conv2d(self.num_hidden_features, num_latent_features, kernel_size, stride, padding)
+        self.conv2_logvar = nn.Conv2d(self.num_hidden_features, num_latent_features, kernel_size, stride, padding)
         self.conv3 = nn.Conv2d(num_latent_features, self.num_hidden_features, kernel_size, stride, padding)
-        self.conv4 = nn.Conv2d(128, self.num_euv_channels, kernel_size, stride, padding)
+        self.conv4 = nn.Conv2d(self.num_hidden_features, self.num_euv_channels, kernel_size, stride, padding)
         self.act = nn.SiLU()
 
         print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))

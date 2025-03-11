@@ -156,16 +156,19 @@ def vae_loss(recon_x, x, mu, logvar):
 class Loss(nn.Module):
     def __init__(self, network_type):
         super(Loss, self).__init__()
-
-        if network_type == "autoencoder" :
+        self.network_type = network_type
+        if self.network_type == "autoencoder" :
             self.criterion = nn.MSELoss()
-        elif network_type == "variational_autoencoder" :
+        elif self.network_type == "variational_autoencoder" :
             self.criterion = vae_loss
         else :
             raise NotImplementedError(f"Network type {network_type} is not implemented")
 
     def forward(self, y_pred, y, mu=None, logvar=None):
-        return self.criterion(y_pred, y, mu, logvar)
+        if self.network_type == "autoencoder" :
+            return self.criterion(y_pred, y)
+        elif self.network_type == "variational_autoencoder" :
+            return self.criterion(y_pred, y, mu, logvar)
 
 
 class Metric(nn.Module):

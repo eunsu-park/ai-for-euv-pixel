@@ -57,30 +57,30 @@ class AutoEncoder(nn.Module):
         self.num_euv_channels = num_euv_channels
         self.num_latent_features = num_latent_features
         self.layer_type = layer_type
-        self.build()
-        print(self)
-        print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
 
-    def build(self):
         if self.layer_type == "pixel":
             kernel_size, stride, padding = 1, 1, 0
         elif self.layer_type == "convolution":
             kernel_size, stride, padding = 3, 1, 1
+        self.conv1 = nn.Conv2d(self.num_euv_channels, 128, kernel_size, stride, padding)
+        self.conv2 = nn.Conv2d(128, self.num_latent_features, kernel_size, stride, padding)
+        self.conv3 = nn.Conv2d(self.num_latent_features, 128, kernel_size, stride, padding)
+        self.conv4 = nn.Conv2d(128, self.num_euv_channels, kernel_size, stride, padding)
+        self.act = nn.SiLU()
 
-        encoder = []
-        encoder += [nn.Conv2d(self.num_euv_channels, 128, kernel_size, stride, padding), nn.SiLU()]
-        encoder += [nn.Conv2d(128, self.num_latent_features, kernel_size, stride, padding)]
-        self.encoder = nn.Sequential(*encoder)
+        print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
 
-        decoder = []
-        decoder += [nn.Conv2d(self.num_latent_features, 128, kernel_size, stride, padding), nn.SiLU()]
-        decoder += [nn.Conv2d(128, self.num_euv_channels, kernel_size, stride, padding)]
-        self.decoder = nn.Sequential(*decoder)
-
+    def encode(self, x):
+        h = self.act(self.conv1(x))
+        return self.conv2(h)
+    
+    def decode(self, latent):
+        h = self.act(self.conv3(latent))
+        return self.conv4(h)
+    
     def forward(self, x):
-        latent = self.encoder(x)
-        x_recon = self.decoder(latent)
-        return x_recon, latent
+        latent = self.encode(x)
+        return self.decode(latent), latent
 
 
 class VariationalAutoEncoder(nn.Module):
@@ -94,13 +94,14 @@ class VariationalAutoEncoder(nn.Module):
             kernel_size, stride, padding = 1, 1, 0
         elif self.layer_type == "convolution":
             kernel_size, stride, padding = 3, 1, 1
-
         self.conv1 = nn.Conv2d(self.num_euv_channels, 128, kernel_size, stride, padding)
         self.conv2_mu = nn.Conv2d(128, num_latent_features, kernel_size, stride, padding)
         self.conv2_logvar = nn.Conv2d(128, num_latent_features, kernel_size, stride, padding)
         self.conv3 = nn.Conv2d(num_latent_features, 128, kernel_size, stride, padding)
         self.conv4 = nn.Conv2d(128, self.num_euv_channels, kernel_size, stride, padding)
         self.act = nn.SiLU()
+
+        print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
 
     def encode(self, x):
         h = self.act(self.conv1(x))

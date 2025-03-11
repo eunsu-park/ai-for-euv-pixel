@@ -154,14 +154,15 @@ class AutoEncoderLoss(nn.Module):
     
 
 class VariationalAutoEncoderLoss(nn.Module):
-    def __init__(self):
+    def __init__(self, beta=0.1):
         super(VariationalAutoEncoderLoss, self).__init__()
         self.criterion = nn.MSELoss()
+        self.beta = beta
 
     def forward(self, x_recon, x, mu, logvar):
         recon_loss = self.criterion(x_recon, x)
         kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-        return recon_loss + kl_div
+        return recon_loss + self.beta * kl_div
 
 
 class Metric(nn.Module):

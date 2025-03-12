@@ -4,51 +4,53 @@ import torch.nn.functional as F
 
 
 class Encoder(nn.Module):
-    def __init__(self, num_euv_channels, num_latent_features, layer_type="pixel"):
+    def __init__(self, num_euv_channels, num_hidden_features, num_latent_features, layer_type="pixel"):
         super(Encoder, self).__init__()
         self.num_euv_channels = num_euv_channels
+        self.num_hidden_features = num_hidden_features
         self.num_latent_features = num_latent_features
         self.layer_type = layer_type
         self.build()
-        print(self)
-        print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
 
     def build(self):
         if self.layer_type == "pixel":
             kernel_size, stride, padding = 1, 1, 0
         elif self.layer_type == "conv":
             kernel_size, stride, padding = 3, 1, 1
-        model = []
-        model += [nn.Conv2d(self.num_euv_channels, 1024, kernel_size, stride, padding), nn.SiLU()]
-        model += [nn.Conv2d(1024, self.num_latent_features, kernel_size, stride, padding)]
-        self.model = nn.Sequential(*model)
+        encoder = []
+        encoder += [nn.Conv2d(self.num_euv_channels,       self.num_hidden_features//2, kernel_size, stride, padding), nn.SiLU()]
+        encoder += [nn.Conv2d(self.num_hidden_features//2, self.num_hidden_features,    kernel_size, stride, padding), nn.SiLU()]
+        encoder += [nn.Conv2d(self.num_hidden_features,    self.num_latent_features,    kernel_size, stride, padding)]
+        self.encoder = nn.Sequential(*encoder)
+        print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
 
     def forward(self, x):
-        return self.model(x)
+        return self.encoder(x)
 
 
 class Decoder(nn.Module):
-    def __init__(self, num_euv_channels, num_latent_features, layer_type="pixel"):
+    def __init__(self, num_euv_channels, num_hidden_features, num_latent_features, layer_type="pixel"):
         super(Decoder, self).__init__()
         self.num_euv_channels = num_euv_channels
+        self.num_hidden_features = num_hidden_features
         self.num_latent_features = num_latent_features
         self.layer_type = layer_type
         self.build()
-        print(self)
-        print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
 
     def build(self):
         if self.layer_type == "pixel":
             kernel_size, stride, padding = 1, 1, 0
-        elif self.layer_type == "convolution":
+        elif self.layer_type == "conv":
             kernel_size, stride, padding = 3, 1, 1
-        model = []
-        model += [nn.Conv2d(self.num_latent_features, 1024, kernel_size, stride, padding), nn.SiLU()]
-        model += [nn.Conv2d(1024, self.num_euv_channels, kernel_size, stride, padding)]
-        self.model = nn.Sequential(*model)
+        decoder = []
+        decoder += [nn.Conv2d(self.num_latent_features,    self.num_hidden_features,    kernel_size, stride, padding), nn.SiLU()]
+        decoder += [nn.Conv2d(self.num_hidden_features,    self.num_hidden_features//2, kernel_size, stride, padding), nn.SiLU()]
+        decoder += [nn.Conv2d(self.num_hidden_features//2, self.num_euv_channels,       kernel_size, stride, padding)]
+        self.decoder = nn.Sequential(*decoder)
+        print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
 
     def forward(self, x):
-        return self.model(x)
+        return self.decoder(x)
 
 
 class AutoEncoder(nn.Module):
@@ -58,30 +60,43 @@ class AutoEncoder(nn.Module):
         self.num_hidden_features = num_hidden_features
         self.num_latent_features = num_latent_features
         self.layer_type = layer_type
+        self.build()
 
-        if self.layer_type == "pixel":
-            kernel_size, stride, padding = 1, 1, 0
-        elif self.layer_type == "convolution":
-            kernel_size, stride, padding = 3, 1, 1
-        self.conv1 = nn.Conv2d(self.num_euv_channels, self.num_hidden_features, kernel_size, stride, padding)
-        self.conv2 = nn.Conv2d(self.num_hidden_features, self.num_latent_features, kernel_size, stride, padding)
-        self.conv3 = nn.Conv2d(self.num_latent_features, self.num_hidden_features, kernel_size, stride, padding)
-        self.conv4 = nn.Conv2d(self.num_hidden_features, self.num_euv_channels, kernel_size, stride, padding)
-        self.act = nn.SiLU()
-
-        print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
+    def build(self):
+        self.encoder = Encoder(self.num_euv_channels, self.num_hidden_features, self.num_latent_features, self.layer_type)
+        self.decoder = Decoder(self.num_euv_channels, self.num_hidden_features, self.num_latent_features, self.layer_type)
 
     def encode(self, x):
-        h = self.act(self.conv1(x))
-        return self.conv2(h)
+        return self.encoder(x)
     
     def decode(self, latent):
-        h = self.act(self.conv3(latent))
-        return self.conv4(h)
-    
+        return self.decoder(latent)
+
     def forward(self, x):
         latent = self.encode(x)
         return self.decode(latent), latent
+
+
+class VAEEncoder(nn.Module):
+    def __init__(self, num_euv_channels, num_hidden_features, num_latent_features, layer_type="pixel"):
+        super(VAEEncoder, self).__init__()
+        self.num_euv_channels = num_euv_channels
+        self.num_hidden_features = num_hidden_features
+        self.num_latent_features = num_latent_features
+        self.layer_type = layer_type
+        self.build()
+
+    def build(self):
+        if self.layer_type == "pixel":
+            kernel_size, stride, padding = 1, 1, 0
+        elif self.layer_type == "conv":
+            kernel_size, stride, padding = 3, 1, 1
+        encoder = []
+        encoder += [nn.Conv2d(self.num_euv_channels,    self.num_hidden_features, kernel_size, stride, padding), nn.SiLU()]
+        encoder += [nn.Conv2d(self.num_hidden_features, self.num_hidden_features, kernel_size, stride, padding), nn.SiLU()]
+        encoder += [nn.Conv2d(self.num_hidden_features, self.num_latent_features, kernel_size, stride, padding)]
+        self.encoder = nn.Sequential(*encoder)
+
 
 
 class VariationalAutoEncoder(nn.Module):
@@ -94,7 +109,7 @@ class VariationalAutoEncoder(nn.Module):
 
         if self.layer_type == "pixel":
             kernel_size, stride, padding = 1, 1, 0
-        elif self.layer_type == "convolution":
+        elif self.layer_type == "conv":
             kernel_size, stride, padding = 3, 1, 1
         self.conv1 = nn.Conv2d(self.num_euv_channels, self.num_hidden_features, kernel_size, stride, padding)
         self.conv2_mu = nn.Conv2d(self.num_hidden_features, num_latent_features, kernel_size, stride, padding)
@@ -105,9 +120,17 @@ class VariationalAutoEncoder(nn.Module):
 
         print('The number of parameters:', sum(p.numel() for p in self.parameters() if p.requires_grad))
 
+
+    def build(self):
+        self.encoder = Encoder(self.num_euv_channels, self.num_hidden_features, self.num_latent_features*2, self.layer_type)
+        self.decoder = Decoder(self.num_euv_channels, self.num_hidden_features, self.num_latent_features, self.layer_type)
+
     def encode(self, x):
-        h = self.act(self.conv1(x))
-        return self.conv2_mu(h), self.conv2_logvar(h)
+        out = self.encoder(x)
+        mu, logvar = torch.split(out, self.num_latent_features, dim=1)
+        return mu, logvar
+#        h = self.act(self.conv1(x))
+#        return self.conv2_mu(h), self.conv2_logvar(h)
 
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
@@ -115,8 +138,9 @@ class VariationalAutoEncoder(nn.Module):
         return mu + eps * std
 
     def decode(self, latent):
-        h = self.act(self.conv3(latent))
-        return self.conv4(h)
+#        h = self.act(self.conv3(latent))
+#        return self.conv4(h)
+        return self.decoder(latent)
     
     def forward(self, x):
         mu, logvar = self.encode(x)

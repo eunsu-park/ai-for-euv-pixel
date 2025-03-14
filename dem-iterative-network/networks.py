@@ -21,12 +21,14 @@ class Calculator(nn.Module):
         elif self.model_type == "conv":
             kernel_size, stride, padding = 3, 1, 1
         model = []
+        # model += [nn.Conv2d(self.num_euv_channels, 1024, kernel_size, stride, padding), nn.SiLU()]
+        # model += [nn.Conv2d(1024, 512, kernel_size, stride, padding), nn.SiLU()]
+        # model += [nn.Conv2d(512, 256, kernel_size, stride, padding), nn.SiLU()]
+        # model += [nn.Conv2d(256, 128, kernel_size, stride, padding), nn.SiLU()]
+        # model += [nn.Conv2d(128, 64, kernel_size, stride, padding), nn.SiLU()]
+        # model += [nn.Conv2d(64, self.num_temperature_bins, kernel_size, stride, padding)]
         model += [nn.Conv2d(self.num_euv_channels, 1024, kernel_size, stride, padding), nn.SiLU()]
-        model += [nn.Conv2d(1024, 512, kernel_size, stride, padding), nn.SiLU()]
-        model += [nn.Conv2d(512, 256, kernel_size, stride, padding), nn.SiLU()]
-        model += [nn.Conv2d(256, 128, kernel_size, stride, padding), nn.SiLU()]
-        model += [nn.Conv2d(128, 64, kernel_size, stride, padding), nn.SiLU()]
-        model += [nn.Conv2d(64, self.num_temperature_bins, kernel_size, stride, padding)]
+        model += [nn.Conv2d(1024, self.num_temperature_bins, kernel_size, stride, padding)]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):

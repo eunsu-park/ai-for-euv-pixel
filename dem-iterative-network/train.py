@@ -61,8 +61,10 @@ def train():
     print(f"Final loss: {loss:.4f}")
     print(f"Final metric: {metric:.4f}")
 
+    model.test(options.data_file_path)
 
-    
+
+
 
 
     #     model.set_input(data)

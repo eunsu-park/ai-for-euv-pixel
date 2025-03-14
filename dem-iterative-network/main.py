@@ -148,3 +148,52 @@ class DINE:
             f.create_dataset("data", data=data)
             f.create_dataset("dem", data=dem)
             f.create_dataset("recon", data=recon)
+
+    def test(self, file_path):
+
+        self.C.eval()
+        self.R.eval()
+
+        data = get_data(self.options.data_file_path, self.options.waves).to(self.device).double()
+
+        data = self.data
+        with torch.no_grad():
+            dem = self.C(data)
+            recon = self.R(dem)
+
+        data = data.cpu().detach().numpy()[0]
+        dem = dem.cpu().detach().numpy()[0]
+        recon = recon.cpu().detach().numpy()[0]
+
+        from data.functions import denormalize_dem, denormalize_euv
+        data = denormalize_euv(data)
+        dem = denormalize_dem(dem)
+        recon = denormalize_euv(recon)
+
+        file_name = os.path.basename(file_path)
+        save_path = f"{self.test_dir}/{file_name}"
+        with h5py.File(save_path, "w") as f:
+            f.create_dataset("data", data=data)
+            f.create_dataset("dem", data=dem)
+            f.create_dataset("recon", data=recon)
+
+        fig, ax = plt.subplots(2, self.options.num_euv_channels, figsize=(4*self.options.num_euv_channels, 8))
+        for i in range(self.options.num_euv_channels):
+            ax[0, i].imshow(data[i], cmap="gray", vmin=-1, vmax=1)
+            ax[0, i].axis("off")
+            ax[0, i].set_title(f"Original {self.options.waves[i]}")
+            ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
+            ax[1, i].axis("off")
+            ax[1, i].set_title(f"Reconstruction {self.options.waves[i]}")
+        plt.savefig(f"{save_path}.png", dpi=300)
+        plt.close()
+
+        ratio = []
+        for n in range(self.options.num_euv_channels):
+            ratio = np.append(ratio, np.nanmean(recon[n])/np.nanmean(data[n]))
+            print(f"{self.options.waves[n]}: {ratio[-1]}")
+
+        plt.plot(self.options.waves, ratio, "o-")
+        plt.ylabel("Mean ratio")
+        plt.savefig(f"{save_path}_ratio.png", dpi=300)
+        plt.close()

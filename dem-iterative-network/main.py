@@ -97,7 +97,7 @@ class DINE:
 
     def random_crop(self):
 
-        data = self.data.copy()
+        data = self.data.clone()
         data = data[:, :, 256:768, 256:768]
         size = self.options.crop_size
         x = np.random.choice(data.shape[-2] - size)

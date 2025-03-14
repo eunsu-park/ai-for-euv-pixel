@@ -7,7 +7,7 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 
-from networks import Calculator, Reconstructor, Loss
+from networks import Calculator, DeepCalculator, Reconstructor, Loss
 from pipeline import get_data
 from utils import save_options
 
@@ -17,9 +17,13 @@ class DINE:
         self.options = options
         self.device = options.device
 
-        self.C = Calculator(options.num_euv_channels,
-                            options.num_temperature_bins,
-                            options.model_type).to(self.device).double()
+        if options.deep is True :
+            C = DeepCalculator
+        else :
+            C = Calculator
+        self.C = C(options.num_euv_channels,
+                   options.num_temperature_bins,
+                   options.model_type).to(self.device).double()
 
         response_file_path = options.response_file_path
         with h5py.File(response_file_path, "r") as h5:

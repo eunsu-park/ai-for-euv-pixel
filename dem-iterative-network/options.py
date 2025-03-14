@@ -24,6 +24,8 @@ class Options:
         self.parser.add_argument("--model_type", type=str,
                                  choices=["pixel", "conv"],
                                  default="pixel", help="model type")
+        self.parser.add_argument("--deep", action="store_true",
+                                 help="use deep model")        
         self.parser.add_argument("--waves", type=int, nargs="+",
                                  default=[94, 131, 171, 193, 211, 335],
                                  help="wavelengths")

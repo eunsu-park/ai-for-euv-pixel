@@ -31,7 +31,7 @@ class Calculator(nn.Module):
 
 class DeepCalculator(nn.Module):
     def __init__(self, num_euv_channels, num_temperature_bins, model_type):
-        super(Calculator, self).__init__()
+        super(DeepCalculator, self).__init__()
         self.num_euv_channels = num_euv_channels
         self.num_temperature_bins = num_temperature_bins
         self.model_type = model_type

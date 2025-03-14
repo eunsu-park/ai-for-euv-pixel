@@ -96,9 +96,12 @@ class DINE:
         return loss.item(), metric.item()
 
     def random_crop(self):
+
+        data = self.data.copy()
+        data = data[:, :, 256:768, 256:768]
         size = self.options.crop_size
-        x = np.random.choice(self.data.shape[-2] - size)
-        y = np.random.choice(self.data.shape[-1] - size)
+        x = np.random.choice(data.shape[-2] - size)
+        y = np.random.choice(data.shape[-1] - size)
         return self.data[:, :, x:x+size, y:y+size]
 
     def save_networks(self, iteration, save_latest=True):

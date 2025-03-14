@@ -155,8 +155,8 @@ class DINE:
         self.R.eval()
 
         data = get_data(self.options.data_file_path, self.options.waves).to(self.device).double()
-
-        data = self.data
+        file_name = os.path.basename(file_path)
+        save_path = f"{self.test_dir}/{file_name}"
         with torch.no_grad():
             dem = self.C(data)
             recon = self.R(dem)
@@ -181,8 +181,6 @@ class DINE:
         dem = denormalize_dem(dem)
         recon = denormalize_euv(recon)
 
-        file_name = os.path.basename(file_path)
-        save_path = f"{self.test_dir}/{file_name}"
         with h5py.File(save_path, "w") as f:
             f.create_dataset("data", data=data)
             f.create_dataset("dem", data=dem)

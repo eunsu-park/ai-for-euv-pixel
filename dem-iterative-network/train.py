@@ -37,20 +37,20 @@ def train():
         if len(losses_last_10) > 10 :
             losses_last_10.pop(0)
             metrics_last_10.pop(0)
-        mean_loss = np.mean(losses_last_10)
-        mean_metric = np.mean(metrics_last_10)
-        message = ""
-        message += f"Iteration: {iteration} "
-        message += f"Loss: {loss:.4f}, Mean Loss: {mean_loss:.4f} "
-        message += f"Metric: {metric:.4f}, Mean Metric: {mean_metric:.4f}"
-        print(message)
 
         if iteration % options.snapshot_interval == 0 :
+            mean_loss = np.mean(losses_last_10)
+            mean_metric = np.mean(metrics_last_10)
+            message = ""
+            message += f"Iteration: {iteration} "
+            message += f"Loss: {loss:.4f}, Mean Loss: {mean_loss:.4f} "
+            message += f"Metric: {metric:.4f}, Mean Metric: {mean_metric:.4f}"
+            print(message)
             model.save_snapshot(data, iteration)
 
-        if mean_loss < options.convegence_threshold :
-            print(f"Converged at iteration {iteration}")
-            break
+        # if mean_loss < options.convegence_threshold :
+        #     print(f"Converged at iteration {iteration}")
+        #     break
 
     end_time = time.time()
     model.save_networks(iteration, save_latest=True)

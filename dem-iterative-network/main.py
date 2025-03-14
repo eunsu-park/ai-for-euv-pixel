@@ -165,6 +165,17 @@ class DINE:
         dem = dem.cpu().detach().numpy()[0]
         recon = recon.cpu().detach().numpy()[0]
 
+        fig, ax = plt.subplots(2, self.options.num_euv_channels, figsize=(4*self.options.num_euv_channels, 8))
+        for i in range(self.options.num_euv_channels):
+            ax[0, i].imshow(data[i], cmap="gray", vmin=-1, vmax=1)
+            ax[0, i].axis("off")
+            ax[0, i].set_title(f"Original {self.options.waves[i]}")
+            ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
+            ax[1, i].axis("off")
+            ax[1, i].set_title(f"Reconstruction {self.options.waves[i]}")
+        plt.savefig(f"{save_path}.png", dpi=300)
+        plt.close()
+
         from data.functions import denormalize_dem, denormalize_euv
         data = denormalize_euv(data)
         dem = denormalize_dem(dem)
@@ -176,17 +187,6 @@ class DINE:
             f.create_dataset("data", data=data)
             f.create_dataset("dem", data=dem)
             f.create_dataset("recon", data=recon)
-
-        fig, ax = plt.subplots(2, self.options.num_euv_channels, figsize=(4*self.options.num_euv_channels, 8))
-        for i in range(self.options.num_euv_channels):
-            ax[0, i].imshow(data[i], cmap="gray", vmin=-1, vmax=1)
-            ax[0, i].axis("off")
-            ax[0, i].set_title(f"Original {self.options.waves[i]}")
-            ax[1, i].imshow(recon[i], cmap="gray", vmin=-1, vmax=1)
-            ax[1, i].axis("off")
-            ax[1, i].set_title(f"Reconstruction {self.options.waves[i]}")
-        plt.savefig(f"{save_path}.png", dpi=300)
-        plt.close()
 
         ratio = []
         for n in range(self.options.num_euv_channels):

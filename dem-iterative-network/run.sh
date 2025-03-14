@@ -7,6 +7,7 @@ nohup python train.py \
     --experiment_name pixel_logcosh \
     --loss_type log_cosh \
     --metric_type mae \
+    2>&1 > pixel_logcosh.log & \
     & \
 
 
@@ -19,6 +20,7 @@ nohup python train.py \
     --experiment_name pixel_logcosh_deep \
     --loss_type log_cosh \
     --metric_type mae \
+    2>&1 > pixel_logcosh_deep.log & \
     & \
 
 
@@ -30,6 +32,7 @@ nohup python train.py \
     --experiment_name conv_logcosh \
     --loss_type log_cosh \
     --metric_type mae \
+    2>&1 > conv_logcosh.log & \
     & \
 
 
@@ -42,4 +45,5 @@ nohup python train.py \
     --experiment_name conv_logcosh_deep \
     --loss_type log_cosh \
     --metric_type mae \
+    2>&1 > conv_logcosh_deep.log & \
     & \

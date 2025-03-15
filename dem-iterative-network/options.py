@@ -61,7 +61,7 @@ class Options:
         self.parser.add_argument("--convegence_threshold", type=float,
                                  default=0.0001, help="convergence threshold")
         self.parser.add_argument("--max_iteration", type=int,
-                                 default=1000, help="number of iterations")
+                                 default=4000, help="number of iterations")
         self.parser.add_argument("--snapshot_interval", type=int,
                                  default=100, help="snapshot interval")
 
